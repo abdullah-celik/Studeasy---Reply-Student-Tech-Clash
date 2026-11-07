@@ -31,6 +31,17 @@ minimal pastel pixel-art theme (Pixelify Sans + Press Start 2P, notched pixel ou
 
 Settings (gear icon) holds the reels switch. The header shows whether `GET /api/health` answers.
 
+## Installable app (PWA / Android via PWABuilder)
+
+- `public/manifest.webmanifest`: name, colours, `standalone` display and icons in `public/icons/`
+  (192/512 px, plus maskable versions with the wizard inside Android's safe zone).
+- `public/sw.js`: service worker, registered in production builds only. Pages are network-first with
+  the cached app shell as offline fallback; hashed `/assets/*` are cache-first; API and Supabase
+  calls are never cached. Bump `VERSION` in it to drop old caches.
+- `public/_headers`: Cloudflare Pages headers (manifest content type, no caching for `sw.js`).
+- After generating the Android package on pwabuilder.com, put the `assetlinks.json` it gives you in
+  `public/.well-known/assetlinks.json`, so the installed app opens without a browser address bar.
+
 ## Run
 
 ```bash
