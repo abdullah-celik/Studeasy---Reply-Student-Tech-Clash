@@ -285,7 +285,7 @@ export function Reels({
         {(loading || (items.length === 0 && !error)) && (
           <section className="reel">
             <div className="reel-card skeleton">
-              <Loader size="lg" label="Generating reels from your notes…" />
+              <Loader anim="rocket" size="lg" label="Generating reels from your notes…" />
             </div>
           </section>
         )}

@@ -155,7 +155,7 @@ export function Chat({
         {messages.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>
             {m.role === "assistant" && busy && i === last && !m.text && !m.quiz && !m.plan && !m.error && (
-              <Loader inline size="sm" label={WORKING[m.intent ?? ""] ?? "Thinking…"} />
+              <Loader anim="rocket" inline size="md" label={WORKING[m.intent ?? ""] ?? "Thinking…"} />
             )}
             {m.text && <div className="text">{m.text}</div>}
             {m.sources && m.sources.length > 0 && (

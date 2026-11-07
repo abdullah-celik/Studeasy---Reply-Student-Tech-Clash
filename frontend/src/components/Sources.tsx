@@ -77,7 +77,7 @@ export function Sources({ courseId, state, highlight }: { courseId: string; stat
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileRef.current?.click()}
       >
         <PixelIcon name="upload" size={20} />
-        {uploading.length ? <Loader inline size="sm" label={`Uploading ${uploading.length} file(s)…`} /> : <span>Drop files or click to add</span>}
+        {uploading.length ? <Loader anim="rocket" inline size="sm" label={`Uploading ${uploading.length} file(s)…`} /> : <span>Drop files or click to add</span>}
         <span className="muted small">PDF · PPTX · DOCX · TXT · MD</span>
         <input
           ref={fileRef}
@@ -102,7 +102,7 @@ export function Sources({ courseId, state, highlight }: { courseId: string; stat
               <span className="src-name" title={d.filename}>{d.filename}</span>
               <span className="hist-sub">
                 {d.status === "ready" && `${d.chunk_count} chunks · ${timeAgo(d.created_at)}`}
-                {d.status === "processing" && <Loader inline size="sm" label="reading…" />}
+                {d.status === "processing" && <Loader anim="rocket" inline size="sm" label="reading…" />}
                 {d.status === "failed" && <span className="badge failed">failed</span>}
               </span>
               {d.error && <span className="small src-error">{d.error}</span>}

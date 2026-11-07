@@ -34,7 +34,7 @@ function EnableReels({ onEnable, busy }: { onEnable: () => void; busy: boolean }
         A swipeable feed of bite-sized cards (explainers, quick quizzes, flashcards, myth vs fact and mnemonics) built from
         your weakest concepts. It suggests a break every so often.
       </p>
-      {busy ? <Loader inline size="sm" label="Turning on…" /> : <button onClick={onEnable}>Turn on reels</button>}
+      {busy ? <Loader anim="rocket" inline size="sm" label="Turning on…" /> : <button onClick={onEnable}>Turn on reels</button>}
       <p className="muted small">You can turn them off again in settings.</p>
     </div>
   );
