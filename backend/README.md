@@ -22,7 +22,7 @@ concepts, and the quiz master reuses the same concept names.
 | Area | Choice | Notes |
 |---|---|---|
 | Language / framework | Python + FastAPI | Best AI ecosystem; OpenAPI spec → generated TypeScript types for the frontend |
-| LLM | OpenAI (`OPENAI_CHAT_MODEL`, default `gpt-4o-mini`) | Model is env-configurable; check it's a current model |
+| LLM | OpenAI GPT-6 Luna (`OPENAI_CHAT_MODEL`, default `gpt-6-luna`), text + image input | Tutor uses `OPENAI_REASONING_EFFORT` (low); structured calls use `OPENAI_STRUCTURED_REASONING_EFFORT` (none) via the Responses API |
 | Embeddings | `text-embedding-3-small`, 1536 dims | Dimension is hard-coded in `supabase/schema.sql` too |
 | Agent orchestration | LangGraph | One explicit graph (`app/agents/graph.py`), easy to demo and debug |
 | Database / vectors | Supabase Postgres + pgvector | HNSW cosine index, `match_chunks` SQL function |

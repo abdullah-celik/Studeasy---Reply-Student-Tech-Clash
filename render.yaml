@@ -23,7 +23,10 @@ services:
       # JSON list: your Cloudflare Pages URL + local dev
       - key: CORS_ORIGINS
         sync: false
+      # Also allow Cloudflare Pages preview deployments (<hash>.<project>.pages.dev)
+      - key: CORS_ORIGIN_REGEX
+        value: https://([a-z0-9-]+\.)?studeasy\.pages\.dev
       - key: OPENAI_CHAT_MODEL
-        value: gpt-4o-mini
+        value: gpt-6-luna
       - key: ENABLE_REELS
         value: "true"

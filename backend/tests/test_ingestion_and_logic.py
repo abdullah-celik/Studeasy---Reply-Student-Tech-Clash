@@ -132,3 +132,20 @@ def test_chat_title_is_trimmed():
     assert title_from("  Explain   photosynthesis\nplease ") == "Explain photosynthesis please"
     long = title_from("word " * 40)
     assert len(long) <= TITLE_MAX and long.endswith("…")
+
+
+def test_service_key_check_rejects_public_keys():
+    import base64
+    import json
+
+    from app.db import check_service_key
+
+    def jwt(role: str) -> str:
+        body = base64.urlsafe_b64encode(json.dumps({"role": role}).encode()).decode().rstrip("=")
+        return f"x.{body}.y"
+
+    for bad in ("sb_publishable_abc", jwt("anon")):
+        with pytest.raises(RuntimeError):
+            check_service_key(bad)
+    check_service_key("sb_secret_abc")
+    check_service_key(jwt("service_role"))

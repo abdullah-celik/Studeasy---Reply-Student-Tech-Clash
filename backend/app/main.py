@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+from postgrest.exceptions import APIError
 
 from app.config import get_settings
 from app.db import init_supabase
@@ -36,6 +37,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,
+    allow_origin_regex=get_settings().cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,6 +47,14 @@ app.add_middleware(
 @app.exception_handler(NoMaterialError)
 async def no_material_handler(_: Request, exc: NoMaterialError):
     return JSONResponse(status_code=409, content={"detail": exc.message})
+
+
+@app.exception_handler(APIError)
+async def database_error_handler(_: Request, exc: APIError):
+    # Handled here (inside the CORS middleware) so the browser sees a real error
+    # instead of an opaque "Failed to fetch".
+    logging.getLogger("app.db").error("Supabase error: %s", exc)
+    return JSONResponse(status_code=502, content={"detail": "Database request failed. Please try again."})
 
 
 @app.get("/api/health", tags=["meta"])

@@ -12,16 +12,47 @@ import { useRoute, type Route } from "./lib/router";
 import { useTheme } from "./lib/theme";
 
 
+type Health = "checking" | "online" | "waking" | "offline";
+
+const WAKE_WINDOW_MS = 120_000; // the free backend can take ~1 min to wake up
+
 function HealthBadge() {
-  const [ok, setOk] = useState<boolean | null>(null);
+  const [state, setState] = useState<Health>("checking");
   useEffect(() => {
-    fetch(`${API_URL}/api/health`)
-      .then((r) => setOk(r.ok))
-      .catch(() => setOk(false));
+    let cancelled = false;
+    let timer: number | undefined;
+    const started = Date.now();
+    const check = async () => {
+      try {
+        const ctrl = new AbortController();
+        const t = window.setTimeout(() => ctrl.abort(), 15_000);
+        const r = await fetch(`${API_URL}/api/health`, { signal: ctrl.signal });
+        window.clearTimeout(t);
+        if (cancelled) return;
+        if (r.ok) {
+          setState("online");
+          timer = window.setTimeout(check, 60_000);
+          return;
+        }
+      } catch {
+        // asleep, timed out, network or CORS error: retry below
+      }
+      if (cancelled) return;
+      const waking = Date.now() - started < WAKE_WINDOW_MS;
+      setState(waking ? "waking" : "offline");
+      timer = window.setTimeout(check, waking ? 5_000 : 30_000);
+    };
+    check();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
+  const cls = state === "online" ? "ready" : state === "offline" ? "failed" : "processing";
+  const label = { checking: "…", online: "online", waking: "waking up…", offline: "offline" }[state];
   return (
-    <span className={`badge ${ok === null ? "processing" : ok ? "ready" : "failed"}`} title={API_URL}>
-      <span className="dot" /> API {ok === null ? "…" : ok ? "online" : "offline"}
+    <span className={`badge ${cls}`} title={API_URL}>
+      <span className="dot" /> API {label}
     </span>
   );
 }
