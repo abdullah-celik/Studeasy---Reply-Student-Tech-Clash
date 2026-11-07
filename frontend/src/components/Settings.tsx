@@ -1,17 +1,26 @@
 import { useState } from "react";
 import { api, call, type Features, type Preferences } from "../api/client";
+import type { Theme, ThemePref } from "../lib/theme";
 import { ErrorBox } from "./ErrorBox";
+
+const THEMES: { id: ThemePref; label: string }[] = [
+  { id: "system", label: "System" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
 
 export function Settings({
   features,
   prefs,
   onPrefs,
   email,
+  theme,
 }: {
   features: Features | null;
   prefs: Preferences | null;
   onPrefs: (p: Preferences) => void;
   email?: string;
+  theme: Theme;
 }) {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -33,6 +42,26 @@ export function Settings({
       <h2>Settings</h2>
       {email && <p className="muted">Signed in as {email}</p>}
       <ErrorBox error={error} />
+
+      <div className="setting">
+        <div>
+          <strong>Appearance</strong>
+          <p className="muted small">System follows your device's light or dark mode.</p>
+        </div>
+        <div className="segmented" role="radiogroup" aria-label="Theme">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              role="radio"
+              aria-checked={theme.pref === t.id}
+              className={theme.pref === t.id ? "on" : ""}
+              onClick={() => theme.setPref(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="setting">
         <div>

@@ -141,7 +141,7 @@ function DeckView({ deck, onDelete, onReviewed }: { deck: FlashcardDeck; onDelet
   useEffect(load, [load]);
 
   if (error) return <ErrorBox error={error} />;
-  if (!cards) return <Loader label="Loading deck…" />;
+  if (!cards) return <Loader quick label="Loading deck…" />;
 
   const now = Date.now();
   const due = cards.filter((c) => new Date(c.due_at).getTime() <= now);

@@ -82,7 +82,7 @@ function OpenQuiz({ id, summary, onAnswered, onDelete }: { id: string; summary?:
   }, [id]);
 
   if (error) return <ErrorBox error={error} />;
-  if (!data) return <Loader label="Loading quiz…" />;
+  if (!data) return <Loader quick label="Loading quiz…" />;
   const total = data.quiz.questions.length;
   const answered = summary?.answered_count ?? data.answers.length;
 

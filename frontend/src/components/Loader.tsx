@@ -9,13 +9,25 @@ export function Loader({
   label,
   size = "md",
   inline = false,
+  quick = false,
 }: {
   label?: string;
   size?: "sm" | "md" | "lg";
   /** Small, on one line with the text (chat bubbles, list rows). */
   inline?: boolean;
+  /** Short waits (opening a page or list): the logo's head bobs instead of the full animation. */
+  quick?: boolean;
 }) {
   const px = { sm: 40, md: 80, lg: 160 }[size];
+  if (quick) {
+    const lp = { sm: 32, md: 64, lg: 96 }[size];
+    return (
+      <div className={`loader quick ${inline ? "inline" : ""} loader-${size}`} role="status" aria-live="polite">
+        <img src={logo} width={lp} height={lp} alt="" className="loader-img bob" draggable={false} />
+        {label && <span className="loader-label">{label}</span>}
+      </div>
+    );
+  }
   return (
     <div className={`loader ${inline ? "inline" : ""} loader-${size}`} role="status" aria-live="polite">
       <picture>

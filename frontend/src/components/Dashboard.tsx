@@ -3,6 +3,7 @@ import { api, call, type Course } from "../api/client";
 import { timeAgo } from "../lib/format";
 import { ErrorBox } from "./ErrorBox";
 import { Loader } from "./Loader";
+import { Logo } from "./Logo";
 import { PixelIcon } from "./PixelIcon";
 
 const TINTS = ["lavender", "mint", "peach", "sky", "pink", "butter"];
@@ -58,7 +59,7 @@ export function Dashboard({ onOpen }: { onOpen: (c: Course) => void }) {
         {courses?.map((c) => (
           <div key={c.id} className={`course-panel tint-${tint(c.id)}`}>
             <button className="course-open" onClick={() => onOpen(c)}>
-              <PixelIcon name="book" size={28} />
+              <Logo size={64} className="course-logo" />
               <span className="course-name">{c.name}</span>
               {c.description && <span className="course-desc">{c.description}</span>}
               <span className="muted small">created {timeAgo(c.created_at)}</span>
@@ -85,7 +86,7 @@ export function Dashboard({ onOpen }: { onOpen: (c: Course) => void }) {
           </button>
         )}
       </div>
-      {courses === null && <Loader label="Loading your courses…" />}
+      {courses === null && <Loader quick label="Loading your courses…" />}
       {courses?.length === 0 && !creating && <p className="muted center">Create your first course, then drop in your notes or slides.</p>}
     </div>
   );

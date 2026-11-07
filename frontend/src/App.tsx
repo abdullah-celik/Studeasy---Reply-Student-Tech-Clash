@@ -8,6 +8,7 @@ import { Logo } from "./components/Logo";
 import { PixelIcon } from "./components/PixelIcon";
 import { Settings } from "./components/Settings";
 import { Workspace } from "./components/Workspace";
+import { useTheme } from "./lib/theme";
 
 
 function HealthBadge() {
@@ -31,6 +32,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [features, setFeatures] = useState<Features | null>(null);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -58,7 +60,7 @@ export default function App() {
     setShowSettings(false);
   }
 
-  if (loading) return <div className="app-loading"><Loader size="lg" label="Loading Studeasy…" /></div>;
+  if (loading) return <div className="app-loading"><Loader quick size="lg" /></div>;
 
   const inCourse = !!session && !!course && !showSettings;
 
@@ -69,20 +71,30 @@ export default function App() {
           <Logo size={32} /> <span>Studeasy</span>
         </button>
         <HealthBadge />
-        {session && (
-          <span className="header-actions">
-            <span className="muted small email">{session.user.email}</span>
-            <button
-              className={`secondary icon ${showSettings ? "active" : ""}`}
-              aria-label="Settings"
-              title="Settings"
-              onClick={() => setShowSettings((s) => !s)}
-            >
-              <PixelIcon name="gear" />
-            </button>
-            <button className="secondary small" onClick={() => supabase.auth.signOut()}>Sign out</button>
-          </span>
-        )}
+        <span className="header-actions">
+          {session && <span className="muted small email">{session.user.email}</span>}
+          <button
+            className="secondary icon theme-toggle"
+            aria-label={theme.effective === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            title={theme.effective === "dark" ? "Light theme" : "Dark theme"}
+            onClick={theme.toggle}
+          >
+            <PixelIcon name={theme.effective === "dark" ? "sun" : "moon"} />
+          </button>
+          {session && (
+            <>
+              <button
+                className={`secondary icon ${showSettings ? "active" : ""}`}
+                aria-label="Settings"
+                title="Settings"
+                onClick={() => setShowSettings((s) => !s)}
+              >
+                <PixelIcon name="gear" />
+              </button>
+              <button className="secondary small" onClick={() => supabase.auth.signOut()}>Sign out</button>
+            </>
+          )}
+        </span>
       </header>
 
       {!session ? (
@@ -92,7 +104,7 @@ export default function App() {
           <button className="secondary small back" onClick={() => setShowSettings(false)}>
             <PixelIcon name="back" size={12} /> Back
           </button>
-          <Settings features={features} prefs={prefs} onPrefs={setPrefs} email={session.user.email} />
+          <Settings features={features} prefs={prefs} onPrefs={setPrefs} email={session.user.email} theme={theme} />
         </div>
       ) : course ? (
         <Workspace key={course.id} course={course} features={features} prefs={prefs} onPrefs={setPrefs} onBack={() => setCourse(null)} />
