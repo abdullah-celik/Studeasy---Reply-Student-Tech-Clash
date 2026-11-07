@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, call, type Reel, type ReelAnswerResult } from "../api/client";
+import { TYPE_LABEL, reelId } from "../lib/reels";
 import { ErrorBox } from "./ErrorBox";
 import { PixelIcon } from "./PixelIcon";
 
 type Tracked = { reel: Reel; key: string };
 
-const TYPE_LABEL: Record<Reel["type"], string> = {
-  explainer: "Explainer",
-  quiz: "Quick quiz",
-  flashcard: "Flashcard",
-  myth_fact: "Myth vs fact",
-  mnemonic: "Mnemonic",
-  break: "Break time",
-};
 
-const reelId = (r: Reel) => ("id" in r ? r.id : null);
 
 /* --- individual cards --------------------------------------------------- */
 
@@ -96,7 +88,7 @@ function FlashcardCard({ reel, onDone }: { reel: Extract<Reel, { type: "flashcar
   );
 }
 
-function ReelBody({ reel, onDone }: { reel: Reel; onDone: () => void }) {
+export function ReelBody({ reel, onDone }: { reel: Reel; onDone: () => void }) {
   switch (reel.type) {
     case "explainer":
       return (
@@ -143,7 +135,16 @@ function ReelBody({ reel, onDone }: { reel: Reel; onDone: () => void }) {
 
 /* --- feed ---------------------------------------------------------------- */
 
-export function Reels({ courseId, onOpenSettings }: { courseId: string; onOpenSettings: () => void }) {
+export function Reels({
+  courseId,
+  onDisabled,
+  onSeen,
+}: {
+  courseId: string;
+  onDisabled: () => void;
+  /** A reel was swiped away (it is now in the history). */
+  onSeen: (reel: Reel) => void;
+}) {
   const [items, setItems] = useState<Tracked[]>([]);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -200,10 +201,12 @@ export function Reels({ courseId, onOpenSettings }: { courseId: string; onOpenSe
     if (!id) return;
     const watch_ms = Math.min(Date.now() - viewStart.current, 3_600_000);
     const completed = done.current.has(id) || watch_ms >= 4000;
-    call(api.POST("/api/reels/{reel_id}/view", { params: { path: { reel_id: id } }, body: { watch_ms, completed } })).catch(() => {
-      /* view tracking is best-effort */
-    });
-  }, []);
+    call(api.POST("/api/reels/{reel_id}/view", { params: { path: { reel_id: id } }, body: { watch_ms, completed } }))
+      .then(() => onSeen(t.reel))
+      .catch(() => {
+        /* view tracking is best-effort */
+      });
+  }, [onSeen]);
 
   // Track which card is snapped into view.
   useEffect(() => {
@@ -248,7 +251,7 @@ export function Reels({ courseId, onOpenSettings }: { courseId: string; onOpenSe
       {status === 403 ? (
         <div className="empty">
           <p>Reels are turned off for your account.</p>
-          <button onClick={onOpenSettings}>Open settings</button>
+          <button onClick={onDisabled}>Turn on reels</button>
         </div>
       ) : status === 409 ? (
         <div className="empty"><p>Upload some course material first, then come back for reels.</p></div>

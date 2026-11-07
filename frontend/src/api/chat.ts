@@ -12,12 +12,17 @@ export type ChatEvent =
   | { event: "error"; data: { message: string } }
   | { event: "done"; data: Record<string, never> };
 
-export async function sendChat(courseId: string, message: string, onEvent: (e: ChatEvent) => void) {
+export async function sendChat(
+  courseId: string,
+  message: string,
+  onEvent: (e: ChatEvent) => void,
+  chatId?: string,
+) {
   const ctrl = new AbortController();
   await fetchEventSource(`${API_URL}/api/courses/${courseId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeader()) },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(chatId ? { message, chat_id: chatId } : { message }),
     signal: ctrl.signal,
     openWhenHidden: true,
     async onopen(res) {

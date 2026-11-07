@@ -69,3 +69,8 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
+
+export type ChatThread = S["ChatThread"];
+export type QuizSummary = S["QuizSummary"];
+export type FlashcardDeck = S["FlashcardDeck"];
+export type SavedPlan = S["SavedPlan"];

@@ -119,7 +119,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** History */
+        /**
+         * History
+         * @description Messages of one thread (`chat_id`), or of the whole course when omitted.
+         */
         get: operations["chat-history"];
         put?: never;
         post?: never;
@@ -129,7 +132,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/courses/{course_id}/quizzes": {
+    "/api/courses/{course_id}/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Chats
+         * @description Newest activity first. Untitled chats get their first message as title.
+         */
+        get: operations["chat-list_chats"];
+        put?: never;
+        /** Create Chat */
+        post: operations["chat-create_chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chats/{chat_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -138,8 +162,51 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        post?: never;
+        /** Delete Chat */
+        delete: operations["chat-delete_chat"];
+        options?: never;
+        head?: never;
+        /** Rename Chat */
+        patch: operations["chat-rename_chat"];
+        trace?: never;
+    };
+    "/api/courses/{course_id}/quizzes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Quizzes
+         * @description Quiz history, newest first, with progress per quiz.
+         */
+        get: operations["quizzes-list_quizzes"];
+        put?: never;
         /** Create Quiz */
         post: operations["quizzes-create_quiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quizzes/{quiz_id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quiz Answers
+         * @description Latest result per answered question (to restore a quiz that was started earlier).
+         */
+        get: operations["quizzes-quiz_answers"];
+        put?: never;
+        /** Submit Answer */
+        post: operations["quizzes-submit_answer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -157,24 +224,8 @@ export interface paths {
         get: operations["quizzes-get_quiz"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/quizzes/{quiz_id}/answers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit Answer */
-        post: operations["quizzes-submit_answer"];
-        delete?: never;
+        /** Delete Quiz */
+        delete: operations["quizzes-delete_quiz"];
         options?: never;
         head?: never;
         patch?: never;
@@ -226,6 +277,44 @@ export interface paths {
         /** Review Flashcard */
         post: operations["flashcards-review_flashcard"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/flashcards/decks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Decks
+         * @description One deck per generation, newest first.
+         */
+        get: operations["flashcards-list_decks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/flashcards/decks/{deck_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deck Cards */
+        get: operations["flashcards-deck_cards"];
+        put?: never;
+        post?: never;
+        /** Delete Deck */
+        delete: operations["flashcards-delete_deck"];
         options?: never;
         head?: never;
         patch?: never;
@@ -300,6 +389,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/courses/{course_id}/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plans */
+        get: operations["planning-list_plans"];
+        put?: never;
+        /**
+         * Create Plan
+         * @description Like GET /plan, but the plan is stored so it shows up in the plan history.
+         */
+        post: operations["planning-create_plan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Plan */
+        delete: operations["planning-delete_plan"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/features": {
         parameters: {
             query?: never;
@@ -350,6 +477,26 @@ export interface paths {
          * @description Next page of unseen reels. Call again when ~2 are left; new ones are generated on demand.
          */
         get: operations["reels-feed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/reels/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * History
+         * @description Reels already viewed, most recent first.
+         */
+        get: operations["reels-history"];
         put?: never;
         post?: never;
         delete?: never;
@@ -481,6 +628,41 @@ export interface components {
         ChatRequest: {
             /** Message */
             message: string;
+            /**
+             * Chat Id
+             * @description Thread to continue (POST /courses/{id}/chats). Omit for the legacy single thread.
+             */
+            chat_id?: string | null;
+        };
+        /** ChatThread */
+        ChatThread: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ChatThreadCreate */
+        ChatThreadCreate: {
+            /** Title */
+            title?: string | null;
+        };
+        /** ChatThreadUpdate */
+        ChatThreadUpdate: {
+            /** Title */
+            title: string;
         };
         /** Course */
         Course: {
@@ -602,6 +784,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Deck Id */
+            deck_id?: string | null;
             /** Front */
             front: string;
             /** Back */
@@ -631,6 +815,25 @@ export interface components {
             front: string;
             /** Back */
             back: string;
+        };
+        /** FlashcardDeck */
+        FlashcardDeck: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Topic */
+            topic: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Card Count */
+            card_count: number;
+            /** Due Count */
+            due_count: number;
         };
         /** FlashcardGenerate */
         FlashcardGenerate: {
@@ -719,6 +922,19 @@ export interface components {
             /** Concept */
             concept: string;
             content: components["schemas"]["MythFactContent"];
+        };
+        /** PlanCreate */
+        PlanCreate: {
+            /**
+             * Daily Minutes
+             * @default 60
+             */
+            daily_minutes: number;
+            /**
+             * Days
+             * @description Defaults to until the next exam
+             */
+            days?: number | null;
         };
         /** PlanDay */
         PlanDay: {
@@ -851,6 +1067,30 @@ export interface components {
             concept: string;
             content: components["schemas"]["QuizContent"];
         };
+        /** QuizSummary */
+        QuizSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Topic */
+            topic: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Question Count */
+            question_count: number;
+            /** Answered Count */
+            answered_count: number;
+            /**
+             * Score
+             * @description Mean of the latest score per answered question
+             */
+            score?: number | null;
+        };
         /** ReelAnswerResult */
         ReelAnswerResult: {
             /** Correct */
@@ -894,6 +1134,25 @@ export interface components {
              * @description SM-2 grade: 0 = blackout ... 5 = perfect recall
              */
             quality: number;
+        };
+        /** SavedPlan */
+        SavedPlan: {
+            /** Summary */
+            summary: string;
+            /** Days */
+            days: components["schemas"]["PlanDay"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Daily Minutes */
+            daily_minutes: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** StudyPlan */
         StudyPlan: {
@@ -1190,6 +1449,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                chat_id?: string | null;
             };
             header?: never;
             path: {
@@ -1206,6 +1466,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatMessage"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "chat-list_chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThread"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "chat-create_chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatThreadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThread"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "chat-delete_chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chat_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "chat-rename_chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chat_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatThreadUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThread"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "quizzes-list_quizzes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizSummary"][];
                 };
             };
             /** @description Validation Error */
@@ -1254,7 +1675,7 @@ export interface operations {
             };
         };
     };
-    "quizzes-get_quiz": {
+    "quizzes-quiz_answers": {
         parameters: {
             query?: never;
             header?: never;
@@ -1271,7 +1692,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Quiz"];
+                    "application/json": components["schemas"]["AnswerResult"][];
                 };
             };
             /** @description Validation Error */
@@ -1308,6 +1729,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AnswerResult"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "quizzes-get_quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quiz_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quiz"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "quizzes-delete_quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quiz_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1409,6 +1890,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Flashcard"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "flashcards-list_decks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlashcardDeck"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "flashcards-deck_cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deck_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Flashcard"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "flashcards-delete_deck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deck_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1583,6 +2155,102 @@ export interface operations {
             };
         };
     };
+    "planning-list_plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPlan"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "planning-create_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "planning-delete_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     "me-features": {
         parameters: {
             query?: never;
@@ -1676,6 +2344,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReelFeed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "reels-history": {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["ExplainerReel"] | components["schemas"]["QuizReel"] | components["schemas"]["FlashcardReel"] | components["schemas"]["MythFactReel"] | components["schemas"]["MnemonicReel"] | components["schemas"]["BreakReel"])[];
                 };
             };
             /** @description Validation Error */
