@@ -1,0 +1,130 @@
+# Studeasy backend (first draft)
+
+A multi-agent study assistant. Students upload their own course material; a team of
+agents turns it into a personal study loop:
+
+```
+upload notes ─► Content agent ─► knowledge base + concept list
+                                       │
+student ─► Orchestrator ─┬─► Tutor (+ Verifier) ── explains, grounded in their notes
+                         ├─► Quiz master ──────── tests, grades ─┐
+                         └─► Planner ──────────── schedules ◄────┤
+                                                                  ▼
+                                               Mastery map (score per concept)
+```
+
+The **mastery map** is what makes the agents work as a system: every quiz answer and
+flashcard review updates a 0–1 score per concept, the planner prioritises the weakest
+concepts, and the quiz master reuses the same concept names.
+
+## Decisions taken (and why)
+
+| Area | Choice | Notes |
+|---|---|---|
+| Language / framework | Python + FastAPI | Best AI ecosystem; OpenAPI spec → generated TypeScript types for the frontend |
+| LLM | OpenAI (`OPENAI_CHAT_MODEL`, default `gpt-4o-mini`) | Model is env-configurable; check it's a current model |
+| Embeddings | `text-embedding-3-small`, 1536 dims | Dimension is hard-coded in `supabase/schema.sql` too |
+| Agent orchestration | LangGraph | One explicit graph (`app/agents/graph.py`), easy to demo and debug |
+| Database / vectors | Supabase Postgres + pgvector | HNSW cosine index, `match_chunks` SQL function |
+| Auth | Supabase Auth | Frontend logs in with supabase-js, sends `Authorization: Bearer <access_token>` |
+| Streaming | Server-Sent Events | `POST /chat` streams `token`, `sources`, `verification`, … events |
+| File types | PDF, PPTX (incl. speaker notes), DOCX, TXT, MD | Scanned PDFs (no text layer) fail; no OCR yet |
+| Original files | **Not stored** | Parsed → chunked → embedded → discarded |
+| Quiz types | Multiple choice, true/false, open (LLM-graded), flashcards | Malformed LLM questions are dropped, not shown |
+| Spaced repetition | SM-2 | `app/services/sm2.py`, unit-tested |
+| Tooling | `uv` (pyproject.toml) **and** pip (requirements*.txt) | Keep both dependency lists in sync |
+| Docker | Dockerfile for the API only | Supabase is hosted, so no compose file needed |
+
+Smaller choices I made without asking (easy to change, please confirm):
+
+1. **Backend uses the service-role key** and filters every query by `user_id` itself.
+   RLS is still enabled on every table, so the frontend *may* read tables directly with
+   supabase-js if you want (e.g. realtime document status).
+2. **Token verification calls Supabase Auth** (`auth.get_user`) on each request: simple and works
+   with any signing key, but costs one HTTP round-trip. Can switch to local JWKS verification later.
+3. **Uploads are processed in a background task**: the upload returns `202` with
+   `status: "processing"`; the frontend polls `GET /documents`.
+4. **Verifier agent runs after the tutor** and emits a `verification` event (grounded yes/no +
+   unsupported claims). Toggle with `VERIFY_ANSWERS`.
+5. **Tutor is Socratic** for exercise-like questions (hint first), direct for "explain X",
+   answers in the student's language, cites sources as `[1]`.
+6. **Mastery score** = moving average (newest result weighs 30%). Flashcard grade 0–5 → 0–1.
+7. **Plans** cover the days until the next exam (max 14, default 7), ~60 min/day.
+8. **Chat memory** = last 10 messages per course.
+9. All routes are under **`/api`**; operationIds look like `quizzes-create_quiz`.
+
+## Project layout
+
+```
+app/
+  main.py            FastAPI app, CORS, routers
+  config.py          settings from env
+  deps.py            auth (Supabase JWT) + course ownership check
+  llm.py             OpenAI chat / structured output / embeddings
+  schemas.py         API contract (→ OpenAPI → TypeScript)
+  agents/
+    graph.py         LangGraph: orchestrator → tutor/verifier | quiz master | planner
+    orchestrator.py  intent + topic classification
+    tutor.py         Socratic, grounded answers
+    verifier.py      checks answers against sources
+    quiz.py          questions, flashcards, open-answer grading
+    planner.py       day-by-day study plan
+    content.py       key-concept extraction at upload
+  services/          ingestion, retrieval, mastery, SM-2, quizzes, planning, chat history
+  routers/           courses+documents, chat (SSE), quizzes, flashcards, planning
+supabase/schema.sql  tables, RLS, pgvector index, match_chunks()
+tests/               SM-2, parsing, planning, quiz cleaning
+docs/FRONTEND.md     how the TypeScript frontend talks to this API
+```
+
+## API overview
+
+| Method | Path | What it does |
+|---|---|---|
+| POST/GET | `/api/courses` | create / list courses |
+| GET/DELETE | `/api/courses/{id}` | get / delete a course (cascades) |
+| POST | `/api/courses/{id}/documents` | upload files (multipart `files`) → background ingestion |
+| GET | `/api/courses/{id}/documents` | list documents + processing status |
+| DELETE | `/api/courses/{id}/documents/{doc_id}` | remove a document and its chunks |
+| POST | `/api/courses/{id}/chat` | **SSE** — talk to the agents |
+| GET | `/api/courses/{id}/chat/history` | past messages |
+| POST | `/api/courses/{id}/quizzes` | generate a quiz (`topic?`, `types`, `count`) |
+| GET | `/api/quizzes/{quiz_id}` | quiz without answers |
+| POST | `/api/quizzes/{quiz_id}/answers` | grade one answer, update mastery |
+| POST | `/api/courses/{id}/flashcards` | generate flashcards |
+| GET | `/api/courses/{id}/flashcards/due` | cards due for review |
+| POST | `/api/flashcards/{card_id}/review` | SM-2 review (`quality` 0–5) |
+| POST/GET/DELETE | `/api/courses/{id}/exams` | manage exam dates |
+| GET | `/api/courses/{id}/mastery` | mastery map (weakest first) |
+| GET | `/api/courses/{id}/plan` | study plan (`daily_minutes`, `days`) |
+
+Interactive docs: http://localhost:8000/docs
+
+## Setup
+
+1. Create a Supabase project, open the SQL editor and run `supabase/schema.sql`.
+2. `cp .env.example .env` and fill in the OpenAI key, Supabase URL and **service role** key.
+3. Install and run:
+
+```bash
+# with uv
+uv sync
+uv run uvicorn app.main:app --reload
+
+# or with pip
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
+```
+
+Tests and lint: `pytest` and `ruff check .` (or prefix with `uv run`).
+
+Docker: `docker build -t studeasy-api . && docker run --env-file .env -p 8000:8000 studeasy-api`
+
+## Known gaps / next decisions
+
+- No OCR for scanned PDFs; DOCX tables are ignored.
+- Ingestion runs in-process; a crash mid-upload leaves the document in `processing`.
+  For production, move it to a queue (e.g. Supabase Edge Functions, Celery, or arq).
+- No rate limiting on LLM endpoints yet.
+- No `uv.lock` committed yet — run `uv sync` once and commit the lockfile.
