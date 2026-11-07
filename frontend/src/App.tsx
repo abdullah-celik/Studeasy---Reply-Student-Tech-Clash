@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { API_URL, api, call, supabase, type Course, type Features, type Preferences } from "./api/client";
 import { Auth } from "./components/Auth";
@@ -8,6 +8,7 @@ import { Logo } from "./components/Logo";
 import { PixelIcon } from "./components/PixelIcon";
 import { Settings } from "./components/Settings";
 import { Workspace } from "./components/Workspace";
+import { useRoute, type Route } from "./lib/router";
 import { useTheme } from "./lib/theme";
 
 
@@ -29,10 +30,12 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<Course | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [features, setFeatures] = useState<Features | null>(null);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const theme = useTheme();
+  const { route, navigate } = useRoute();
+  // Where "Back" in Settings returns to.
+  const beforeSettings = useRef<Route>({ name: "home" });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -55,14 +58,47 @@ export default function App() {
     call(api.GET("/api/me/preferences")).then(setPrefs).catch(() => setPrefs(null));
   }, [userId]);
 
+  // The URL names a course (e.g. after a refresh): load it, or go home if it's gone.
+  const routeCourseId = route.name === "course" ? route.courseId : null;
+  const [courseError, setCourseError] = useState(false);
+  useEffect(() => {
+    if (!userId || !routeCourseId || course?.id === routeCourseId) return;
+    let cancelled = false;
+    setCourseError(false);
+    call(api.GET("/api/courses/{course_id}", { params: { path: { course_id: routeCourseId } } }))
+      .then((c) => !cancelled && setCourse(c))
+      .catch(() => {
+        if (cancelled) return;
+        setCourseError(true);
+        navigate({ name: "home" }, "replace");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, routeCourseId, course?.id, navigate]);
+
   function home() {
-    setCourse(null);
-    setShowSettings(false);
+    navigate({ name: "home" });
+  }
+
+  function openCourse(c: Course) {
+    setCourse(c);
+    navigate({ name: "course", courseId: c.id, mode: null, item: null });
+  }
+
+  function toggleSettings() {
+    if (route.name === "settings") navigate(beforeSettings.current);
+    else {
+      beforeSettings.current = route;
+      navigate({ name: "settings" });
+    }
   }
 
   if (loading) return <div className="app-loading"><Loader quick size="lg" /></div>;
 
-  const inCourse = !!session && !!course && !showSettings;
+  const showSettings = route.name === "settings";
+  const activeCourse = route.name === "course" && course?.id === route.courseId ? course : null;
+  const inCourse = !!session && route.name === "course";
 
   return (
     <div className={inCourse ? "app app-wide" : "app container"}>
@@ -87,7 +123,7 @@ export default function App() {
                 className={`secondary icon ${showSettings ? "active" : ""}`}
                 aria-label="Settings"
                 title="Settings"
-                onClick={() => setShowSettings((s) => !s)}
+                onClick={toggleSettings}
               >
                 <PixelIcon name="gear" />
               </button>
@@ -101,15 +137,29 @@ export default function App() {
         <Auth />
       ) : showSettings ? (
         <div className="container-inner">
-          <button className="secondary small back" onClick={() => setShowSettings(false)}>
+          <button className="secondary small back" onClick={toggleSettings}>
             <PixelIcon name="back" size={12} /> Back
           </button>
           <Settings features={features} prefs={prefs} onPrefs={setPrefs} email={session.user.email} theme={theme} />
         </div>
-      ) : course ? (
-        <Workspace key={course.id} course={course} features={features} prefs={prefs} onPrefs={setPrefs} onBack={() => setCourse(null)} />
+      ) : route.name === "course" ? (
+        activeCourse ? (
+          <Workspace
+            key={activeCourse.id}
+            course={activeCourse}
+            features={features}
+            prefs={prefs}
+            onPrefs={setPrefs}
+            onBack={home}
+            mode={route.mode}
+            item={route.item}
+            onRoute={(mode, item, how) => navigate({ name: "course", courseId: activeCourse.id, mode, item }, how)}
+          />
+        ) : courseError ? null : (
+          <Loader quick label="Opening course…" />
+        )
       ) : (
-        <Dashboard onOpen={setCourse} />
+        <Dashboard onOpen={openCourse} />
       )}
     </div>
   );

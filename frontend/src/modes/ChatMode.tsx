@@ -5,13 +5,18 @@ import { HistoryList } from "../components/HistoryList";
 import { timeAgo } from "../lib/format";
 import type { ModeProps } from "./types";
 
-export function ChatMode({ courseId, hasMaterial, onCite }: ModeProps) {
+export function ChatMode({ courseId, hasMaterial, onCite, item, onItem }: ModeProps) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<string | null>(item);
   // Remount the conversation only when the student switches threads, not when a new
   // chat gets its id on the first message (that would cut the stream).
   const [chatKey, setChatKey] = useState(0);
+
+  // Keep the open item in the URL (?item=) so a refresh reopens it.
+  useEffect(() => {
+    if (active !== item) onItem(active);
+  }, [active, item, onItem]);
 
   function open(id: string | null) {
     if (id === active) return;
@@ -21,7 +26,10 @@ export function ChatMode({ courseId, hasMaterial, onCite }: ModeProps) {
 
   const load = useCallback(async () => {
     try {
-      setThreads(await call(api.GET("/api/courses/{course_id}/chats", { params: { path: { course_id: courseId } } })));
+      const ts = await call(api.GET("/api/courses/{course_id}/chats", { params: { path: { course_id: courseId } } }));
+      setThreads(ts);
+      // A chat id from the URL that no longer exists: start a new chat instead.
+      setActive((a) => (a && !ts.some((t) => t.id === a) ? null : a));
     } finally {
       setLoading(false);
     }

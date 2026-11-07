@@ -11,4 +11,7 @@ export type ModeProps = {
   features: Features | null;
   prefs: Preferences | null;
   onPrefs: (p: Preferences) => void;
+  /** The open item from the URL (?item=), and how to update it. */
+  item: string | null;
+  onItem: (id: string | null) => void;
 };

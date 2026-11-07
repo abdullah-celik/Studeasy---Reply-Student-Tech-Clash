@@ -107,14 +107,20 @@ function OpenQuiz({ id, summary, onAnswered, onDelete }: { id: string; summary?:
   );
 }
 
-export function QuizMode({ courseId, hasMaterial }: ModeProps) {
+export function QuizMode({ courseId, hasMaterial, item, onItem }: ModeProps) {
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<string | null>(item);
+  // Keep the open item in the URL (?item=) so a refresh reopens it.
+  useEffect(() => {
+    if (active !== item) onItem(active);
+  }, [active, item, onItem]);
 
   const load = useCallback(async () => {
     try {
-      setQuizzes(await call(api.GET("/api/courses/{course_id}/quizzes", { params: { path: { course_id: courseId } } })));
+      const qs = await call(api.GET("/api/courses/{course_id}/quizzes", { params: { path: { course_id: courseId } } }));
+      setQuizzes(qs);
+      setActive((a) => (a && !qs.some((q) => q.id === a) ? null : a));
     } finally {
       setLoading(false);
     }

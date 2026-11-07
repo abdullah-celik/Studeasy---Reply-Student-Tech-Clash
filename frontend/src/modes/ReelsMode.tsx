@@ -40,11 +40,15 @@ function EnableReels({ onEnable, busy }: { onEnable: () => void; busy: boolean }
   );
 }
 
-export function ReelsMode({ courseId, prefs, onPrefs }: ModeProps) {
+export function ReelsMode({ courseId, prefs, onPrefs, item, onItem }: ModeProps) {
   const enabled = !!prefs?.reels_enabled;
   const [seen, setSeen] = useState<SeenReel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(item);
+  // Keep the previewed reel in the URL (?item=) so a refresh reopens it.
+  useEffect(() => {
+    if (preview !== item) onItem(preview);
+  }, [preview, item, onItem]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -54,7 +58,11 @@ export function ReelsMode({ courseId, prefs, onPrefs }: ModeProps) {
       return;
     }
     call(api.GET("/api/courses/{course_id}/reels/history", { params: { path: { course_id: courseId }, query: { limit: 100 } } }))
-      .then((rs) => setSeen(rs.filter((r): r is SeenReel => r.type !== "break")))
+      .then((rs) => {
+        const s = rs.filter((r): r is SeenReel => r.type !== "break");
+        setSeen(s);
+        setPreview((p) => (p && !s.some((r) => r.id === p) ? null : p));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [courseId, enabled]);

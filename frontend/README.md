@@ -15,6 +15,10 @@ minimal pastel pixel-art theme (Pixelify Sans + Press Start 2P, notched pixel ou
     Citation chips in chat flash the cited file here.
   - Below 1180px Sources becomes a drawer, below 820px History too (toggle buttons in the bar).
 - The last mode is remembered per course.
+- **The URL follows the app** (`src/lib/router.ts`): `/courses/<id>/<mode>?item=<chat|quiz|deck|plan|reel id>`
+  and `/settings`, so a refresh or a shared link reopens the same place and Back/Forward work.
+  The host must serve `index.html` for unknown paths: Vite dev does, and Cloudflare Pages does
+  for projects without a `404.html` (don't add one).
 
 | Mode | Backend endpoints |
 |---|---|

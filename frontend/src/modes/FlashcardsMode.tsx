@@ -177,11 +177,15 @@ function DeckView({ deck, onDelete, onReviewed }: { deck: FlashcardDeck; onDelet
   );
 }
 
-export function FlashcardsMode({ courseId, hasMaterial }: ModeProps) {
+export function FlashcardsMode({ courseId, hasMaterial, item, onItem }: ModeProps) {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [due, setDue] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<string | null>(item);
+  // Keep the open item in the URL (?item=) so a refresh reopens it.
+  useEffect(() => {
+    if (active !== item) onItem(active);
+  }, [active, item, onItem]);
   const [studyKey, setStudyKey] = useState(0);
 
   const load = useCallback(async () => {
@@ -193,6 +197,7 @@ export function FlashcardsMode({ courseId, hasMaterial }: ModeProps) {
       ]);
       setDecks(d);
       setDue(du);
+      setActive((a) => (a && a !== DUE && !d.some((x) => x.id === a) ? null : a));
     } finally {
       setLoading(false);
     }

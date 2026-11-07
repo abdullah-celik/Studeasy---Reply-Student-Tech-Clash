@@ -136,14 +136,21 @@ function NewPlan({ courseId, hasMaterial, onCreated }: { courseId: string; hasMa
   );
 }
 
-export function PlanMode({ courseId, hasMaterial }: ModeProps) {
+export function PlanMode({ courseId, hasMaterial, item, onItem }: ModeProps) {
   const [plans, setPlans] = useState<SavedPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<string | null>(item);
+  // Keep the open item in the URL (?item=) so a refresh reopens it.
+  useEffect(() => {
+    if (active !== item) onItem(active);
+  }, [active, item, onItem]);
 
   useEffect(() => {
     call(api.GET("/api/courses/{course_id}/plans", { params: { path: { course_id: courseId } } }))
-      .then(setPlans)
+      .then((ps) => {
+        setPlans(ps);
+        setActive((a) => (a && !ps.some((p) => p.id === a) ? null : a));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [courseId]);

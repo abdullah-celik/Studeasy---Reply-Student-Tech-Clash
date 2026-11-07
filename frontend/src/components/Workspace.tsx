@@ -27,20 +27,31 @@ export function Workspace({
   prefs,
   onPrefs,
   onBack,
+  mode: routeMode,
+  item,
+  onRoute,
 }: {
   course: Course;
   features: Features | null;
   prefs: Preferences | null;
   onPrefs: (p: Preferences) => void;
   onBack: () => void;
+  /** From the URL: the open mode and item (chat, quiz, deck, plan or reel id). */
+  mode: Mode | null;
+  item: string | null;
+  onRoute: (mode: Mode, item: string | null, how: "push" | "replace") => void;
 }) {
-  const modes = MODES.filter((m) => m.id !== "reels" || features?.reels);
+  // Hide Reels only once the server has said it is off (not while /features is loading).
+  const modes = MODES.filter((m) => m.id !== "reels" || features?.reels !== false);
   const storeKey = `studeasy:mode:${course.id}`;
-  const [mode, setMode] = useState<Mode>(() => {
-    const saved = store.get(storeKey) as Mode | null;
-    return saved && MODES.some((m) => m.id === saved) ? saved : "chat";
-  });
+  const saved = store.get(storeKey) as Mode | null;
+  const mode: Mode = routeMode ?? (saved && MODES.some((m) => m.id === saved) ? saved : "chat");
   const current = modes.some((m) => m.id === mode) ? mode : "chat";
+
+  // Opening /courses/<id> without a mode: write the remembered one into the URL.
+  useEffect(() => {
+    if (routeMode !== current) onRoute(current, routeMode === current ? item : null, "replace");
+  }, [routeMode, current, item, onRoute]);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const docs = useDocuments(course.id);
@@ -58,7 +69,16 @@ export function Workspace({
     timer.current = window.setTimeout(() => setHighlight(null), 2500);
   }
 
-  const props: ModeProps = { courseId: course.id, hasMaterial, onCite: cite, features, prefs, onPrefs };
+  const props: ModeProps = {
+    courseId: course.id,
+    hasMaterial,
+    onCite: cite,
+    features,
+    prefs,
+    onPrefs,
+    item: routeMode === current ? item : null,
+    onItem: (id) => onRoute(current, id, "replace"),
+  };
 
   return (
     <div
@@ -80,7 +100,7 @@ export function Workspace({
               className={`mode mode-${m.id} ${m.id === current ? "active" : ""}`}
               aria-current={m.id === current ? "page" : undefined}
               onClick={() => {
-                setMode(m.id);
+                if (m.id !== current) onRoute(m.id, null, "push");
                 setDrawer(null);
               }}
             >
