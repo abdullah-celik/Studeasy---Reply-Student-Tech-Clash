@@ -1,4 +1,6 @@
 import { useState } from "react";
+import type { LegalDoc } from "../lib/legal";
+import { LegalDialog, LegalLinks } from "./Legal";
 import { api, call, type Features, type Preferences } from "../api/client";
 import type { Theme, ThemePref } from "../lib/theme";
 import { ErrorBox } from "./ErrorBox";
@@ -24,6 +26,7 @@ export function Settings({
 }) {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const [legal, setLegal] = useState<LegalDoc | null>(null);
 
   async function toggleReels(on: boolean) {
     setBusy(true);
@@ -84,6 +87,11 @@ export function Settings({
           <span className="track" />
         </label>
       </div>
+
+      <p className="muted small legal-note">
+        <LegalLinks open={setLegal} />
+      </p>
+      <LegalDialog doc={legal} onClose={() => setLegal(null)} />
     </div>
   );
 }
