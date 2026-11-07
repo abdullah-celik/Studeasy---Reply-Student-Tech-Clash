@@ -34,6 +34,10 @@ concepts, and the quiz master reuses the same concept names.
 | Spaced repetition | SM-2 | `app/services/sm2.py`, unit-tested |
 | Tooling | `uv` (pyproject.toml) **and** pip (requirements*.txt) | Keep both dependency lists in sync |
 | Docker | Dockerfile for the API only | Supabase is hosted, so no compose file needed |
+| **Reels (optional)** | Animated text cards: explainer, quiz, flashcard flip, myth vs fact / mnemonic | `ENABLE_REELS` server switch **and** per-student opt-in |
+| Reels feed | Adaptive, generated on demand | Weakest concept + one random concept per batch; due flashcards slotted in |
+| Reels wellbeing | Soft "take a break" card every `REELS_BREAK_EVERY` reels | Student can keep scrolling |
+| Reels signals | Views + watch time | Seen reels never repeat |
 
 Smaller choices I made without asking (easy to change, please confirm):
 
@@ -52,6 +56,10 @@ Smaller choices I made without asking (easy to change, please confirm):
 7. **Plans** cover the days until the next exam (max 14, default 7), ~60 min/day.
 8. **Chat memory** = last 10 messages per course.
 9. All routes are under **`/api`**; operationIds look like `quizzes-create_quiz`.
+10. **Reels are opt-in per student** (`reels_enabled` defaults to `false`), so the module
+    stays an option. Flip into it with `PATCH /api/me/preferences`.
+11. Each reel batch makes one LLM call per concept (run in parallel), ~4 cards each.
+    Flashcard reels are real deck cards, so rating them updates SM-2; quiz reels update mastery.
 
 ## Project layout
 
@@ -70,6 +78,7 @@ app/
     quiz.py          questions, flashcards, open-answer grading
     planner.py       day-by-day study plan
     content.py       key-concept extraction at upload
+    reels.py         turns a concept into swipeable cards
   services/          ingestion, retrieval, mastery, SM-2, quizzes, planning, chat history
   routers/           courses+documents, chat (SSE), quizzes, flashcards, planning
 supabase/schema.sql  tables, RLS, pgvector index, match_chunks()
@@ -97,12 +106,18 @@ docs/FRONTEND.md     how the TypeScript frontend talks to this API
 | POST/GET/DELETE | `/api/courses/{id}/exams` | manage exam dates |
 | GET | `/api/courses/{id}/mastery` | mastery map (weakest first) |
 | GET | `/api/courses/{id}/plan` | study plan (`daily_minutes`, `days`) |
+| GET | `/api/features` | optional modules enabled on this server (no auth) |
+| GET/PATCH | `/api/me/preferences` | student switches, e.g. `reels_enabled` |
+| GET | `/api/courses/{id}/reels/feed` | **reels** — next page of unseen reels (generates more on demand) |
+| POST | `/api/reels/{id}/view` | mark seen + watch time |
+| POST | `/api/reels/{id}/answer` | answer a quiz reel |
 
 Interactive docs: http://localhost:8000/docs
 
 ## Setup
 
 1. Create a Supabase project, open the SQL editor and run `supabase/schema.sql`.
+   The script is idempotent: after pulling new features (like reels), just run it again.
 2. `cp .env.example .env` and fill in the OpenAI key, Supabase URL and **service role** key.
 3. Install and run:
 

@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,7 +18,12 @@ class Settings(BaseSettings):
 
     # Supabase
     supabase_url: str
-    supabase_service_role_key: str
+    # Newer dashboards call it the "secret key" (sb_secret_...); accept common names.
+    supabase_service_role_key: str = Field(
+        validation_alias=AliasChoices(
+            "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY"
+        )
+    )
 
     # App
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -27,6 +33,12 @@ class Settings(BaseSettings):
     retrieval_k: int = 6
     verify_answers: bool = True
     chat_history_limit: int = 10
+
+    # Reels (short swipeable study cards). Server-wide switch; students also opt in.
+    enable_reels: bool = True
+    reels_page_size: int = 6
+    reels_break_every: int = 15  # insert a "take a break" card after this many reels
+    reels_session_minutes: int = 30  # views within this window count as one session
 
 
 @lru_cache
