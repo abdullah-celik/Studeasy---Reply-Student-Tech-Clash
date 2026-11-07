@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { API_URL, api, call, supabase, type Course, type Features, type Preferences } from "./api/client";
 import { Auth } from "./components/Auth";
+import { Landing } from "./components/Landing";
 import { Dashboard } from "./components/Dashboard";
 import { Loader } from "./components/Loader";
 import { Logo } from "./components/Logo";
@@ -108,6 +109,12 @@ export default function App() {
     };
   }, [userId, routeCourseId, course?.id, navigate]);
 
+  // Signed in on /login or /signup (e.g. right after signing in): go to the dashboard.
+  const onAuthPage = route.name === "login" || route.name === "signup";
+  useEffect(() => {
+    if (session && onAuthPage) navigate({ name: "home" }, "replace");
+  }, [session, onAuthPage, navigate]);
+
   function home() {
     navigate({ name: "home" });
   }
@@ -137,7 +144,7 @@ export default function App() {
         <button className="logo" onClick={home}>
           <Logo size={32} /> <span>Studeasy</span>
         </button>
-        <HealthBadge />
+        {session && <HealthBadge />}
         <span className="header-actions">
           {session && <span className="muted small email">{session.user.email}</span>}
           <button
@@ -148,6 +155,12 @@ export default function App() {
           >
             <PixelIcon name={theme.effective === "dark" ? "sun" : "moon"} />
           </button>
+          {!session && !onAuthPage && (
+            <>
+              <button className="secondary small" onClick={() => navigate({ name: "login" })}>Log in</button>
+              <button className="small" onClick={() => navigate({ name: "signup" })}>Sign up</button>
+            </>
+          )}
           {session && (
             <>
               <button
@@ -165,7 +178,15 @@ export default function App() {
       </header>
 
       {!session ? (
-        <Auth />
+        route.name === "home" ? (
+          <Landing onSignUp={() => navigate({ name: "signup" })} onLogIn={() => navigate({ name: "login" })} />
+        ) : (
+          // /login, /signup, or a protected page (the URL is kept, so signing in lands there)
+          <Auth
+            mode={route.name === "signup" ? "up" : "in"}
+            onMode={(m) => navigate({ name: m === "up" ? "signup" : "login" }, onAuthPage ? "replace" : "push")}
+          />
+        )
       ) : showSettings ? (
         <div className="container-inner">
           <button className="secondary small back" onClick={toggleSettings}>

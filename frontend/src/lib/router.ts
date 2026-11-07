@@ -3,7 +3,8 @@ import type { Mode } from "../modes/types";
 
 /**
  * Tiny URL router so a refresh (or a shared link) lands where the student was:
- *   /                                  dashboard
+ *   /                                  landing page (signed out) or dashboard (signed in)
+ *   /login, /signup                    sign in / create account
  *   /settings                          settings
  *   /courses/<id>[/<mode>][?item=<id>] a course, its mode and the open chat/quiz/deck/plan/reel
  * Static hosts must serve index.html for unknown paths (Vite dev does; Cloudflare Pages
@@ -11,6 +12,8 @@ import type { Mode } from "../modes/types";
  */
 export type Route =
   | { name: "home" }
+  | { name: "login" }
+  | { name: "signup" }
   | { name: "settings" }
   | { name: "course"; courseId: string; mode: Mode | null; item: string | null };
 
@@ -19,6 +22,8 @@ const MODES: Mode[] = ["chat", "quiz", "flashcards", "reels", "plan"];
 export function parse(loc: Location = window.location): Route {
   const parts = loc.pathname.split("/").filter(Boolean).map(decodeURIComponent);
   if (parts[0] === "settings") return { name: "settings" };
+  if (parts[0] === "login") return { name: "login" };
+  if (parts[0] === "signup") return { name: "signup" };
   if (parts[0] === "courses" && parts[1]) {
     const mode = MODES.includes(parts[2] as Mode) ? (parts[2] as Mode) : null;
     return { name: "course", courseId: parts[1], mode, item: new URLSearchParams(loc.search).get("item") };
@@ -28,6 +33,8 @@ export function parse(loc: Location = window.location): Route {
 
 export function toPath(r: Route): string {
   if (r.name === "settings") return "/settings";
+  if (r.name === "login") return "/login";
+  if (r.name === "signup") return "/signup";
   if (r.name === "course") {
     let p = `/courses/${encodeURIComponent(r.courseId)}`;
     if (r.mode) p += `/${r.mode}`;

@@ -5,10 +5,10 @@ import { LegalDialog, LegalLinks } from "./Legal";
 import { Logo } from "./Logo";
 import { PasswordInput } from "./PasswordInput";
 
-type Mode = "in" | "up";
+export type AuthMode = "in" | "up";
 
-export function Auth() {
-  const [mode, setMode] = useState<Mode>("in");
+/** Sign in / create account. The mode comes from the URL (/login, /signup). */
+export function Auth({ mode, onMode }: { mode: AuthMode; onMode: (m: AuthMode) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -16,8 +16,8 @@ export function Auth() {
   const [busy, setBusy] = useState(false);
   const [legal, setLegal] = useState<LegalDoc | null>(null);
 
-  function switchMode(m: Mode) {
-    setMode(m);
+  function switchMode(m: AuthMode) {
+    onMode(m);
     setMsg(null);
   }
 
@@ -42,7 +42,7 @@ export function Auth() {
     if (error) setMsg({ kind: "error", text: error.message });
     else if (mode === "up") {
       setMsg({ kind: "notice", text: "Account created. Check your inbox to confirm your email if asked, then sign in." });
-      setMode("in");
+      onMode("in");
     }
   }
 
