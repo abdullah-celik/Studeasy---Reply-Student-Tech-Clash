@@ -158,13 +158,48 @@ create table if not exists reel_views (
 );
 create index if not exists reel_views_session_idx on reel_views (user_id, created_at);
 
+-- Chat threads: several conversations per course --------------------------
+create table if not exists chats (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references auth.users(id) on delete cascade,
+    course_id   uuid not null references courses(id) on delete cascade,
+    title       text,
+    created_at  timestamptz not null default now(),
+    updated_at  timestamptz not null default now()
+);
+-- Messages sent without a chat_id (older clients) keep a null chat_id.
+alter table chat_messages add column if not exists chat_id uuid references chats(id) on delete cascade;
+
+-- Flashcard decks: one per generation, so students can browse earlier sets ---
+create table if not exists flashcard_decks (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references auth.users(id) on delete cascade,
+    course_id   uuid not null references courses(id) on delete cascade,
+    topic       text,
+    created_at  timestamptz not null default now()
+);
+-- Cards created by reels have no deck.
+alter table flashcards add column if not exists deck_id uuid references flashcard_decks(id) on delete cascade;
+
+-- Saved study plans (GET /plan stays stateless; POST /plans stores one) ------
+create table if not exists study_plans (
+    id            uuid primary key default gen_random_uuid(),
+    user_id       uuid not null references auth.users(id) on delete cascade,
+    course_id     uuid not null references courses(id) on delete cascade,
+    daily_minutes int  not null,
+    summary       text not null,
+    days          jsonb not null,
+    created_at    timestamptz not null default now()
+);
+
 -- Row Level Security: a student only ever sees their own rows -------------
 do $$
 declare t text;
 begin
     foreach t in array array['courses','documents','chunks','mastery','quizzes',
                              'questions','answers','flashcards','exams','chat_messages',
-                             'user_preferences','reels','reel_views']
+                             'user_preferences','reels','reel_views',
+                             'chats','flashcard_decks','study_plans']
     loop
         execute format('alter table %I enable row level security', t);
         execute format('drop policy if exists owner_all on %I', t);
@@ -227,6 +262,11 @@ create index if not exists chat_messages_user_idx  on chat_messages (user_id);
 create index if not exists reels_course_idx        on reels (course_id);
 create index if not exists reels_flashcard_idx     on reels (flashcard_id);
 create index if not exists reel_views_reel_idx     on reel_views (reel_id);
+create index if not exists chats_course_idx        on chats (user_id, course_id, updated_at);
+create index if not exists chat_messages_chat_idx  on chat_messages (chat_id, created_at);
+create index if not exists flashcard_decks_course_idx on flashcard_decks (user_id, course_id, created_at);
+create index if not exists flashcards_deck_idx     on flashcards (deck_id);
+create index if not exists study_plans_course_idx  on study_plans (user_id, course_id, created_at);
 
 -- Data API access ----------------------------------------------------------
 -- The backend talks to PostgREST with the service role; newer projects don't always

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.db import get_db
 from app.deps import CurrentUser, get_current_user, get_owned_course
-from app.schemas import AnswerResult, AnswerSubmit, Quiz, QuizCreate
+from app.schemas import AnswerResult, AnswerSubmit, Quiz, QuizCreate, QuizSummary
 from app.services import quizzes
 from supabase import AsyncClient
 
@@ -23,6 +23,35 @@ async def create_quiz(
     return await quizzes.create_quiz(
         db, user.id, course["id"], body.topic, list(dict.fromkeys(body.types)), body.count
     )
+
+
+@router.get("/courses/{course_id}/quizzes", response_model=list[QuizSummary])
+async def list_quizzes(
+    course: dict = Depends(get_owned_course),
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    """Quiz history, newest first, with progress per quiz."""
+    return await quizzes.list_quizzes(db, user.id, course["id"])
+
+
+@router.get("/quizzes/{quiz_id}/answers", response_model=list[AnswerResult])
+async def quiz_answers(
+    quiz_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    """Latest result per answered question (to restore a quiz that was started earlier)."""
+    return await quizzes.quiz_answers(db, user.id, str(quiz_id))
+
+
+@router.delete("/quizzes/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_quiz(
+    quiz_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    await quizzes.delete_quiz(db, user.id, str(quiz_id))
 
 
 @router.get("/quizzes/{quiz_id}", response_model=Quiz)

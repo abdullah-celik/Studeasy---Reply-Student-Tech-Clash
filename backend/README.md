@@ -111,6 +111,21 @@ docs/FRONTEND.md     how the TypeScript frontend talks to this API
 | GET | `/api/courses/{id}/reels/feed` | **reels** — next page of unseen reels (generates more on demand) |
 | POST | `/api/reels/{id}/view` | mark seen + watch time |
 | POST | `/api/reels/{id}/answer` | answer a quiz reel |
+| GET | `/api/courses/{id}/reels/history` | reels already viewed (newest first) |
+| GET/POST | `/api/courses/{id}/chats` | list / create chat threads (several chats per course) |
+| PATCH/DELETE | `/api/chats/{chat_id}` | rename / delete a thread |
+| GET | `/api/courses/{id}/quizzes` | quiz history with progress (`answered_count`, `score`) |
+| GET | `/api/quizzes/{quiz_id}/answers` | latest result per answered question (restore a quiz) |
+| DELETE | `/api/quizzes/{quiz_id}` | delete a quiz |
+| GET | `/api/courses/{id}/flashcards/decks` | flashcard decks (one per generation) with due counts |
+| GET/DELETE | `/api/flashcards/decks/{deck_id}` | cards of a deck / delete a deck |
+| POST/GET | `/api/courses/{id}/plans` | make **and save** a plan / list saved plans |
+| DELETE | `/api/courses/{id}/plans/{plan_id}` | delete a saved plan |
+
+History endpoints are additive: `POST /chat` takes an optional `chat_id` (messages without one
+keep the old single-thread behaviour), `GET /chat/history` takes an optional `chat_id`, and
+`GET /plan` is still stateless. Plans the planner makes from chat are saved too. Re-run
+`supabase/schema.sql` to add the `chats`, `flashcard_decks` and `study_plans` tables.
 
 Interactive docs: http://localhost:8000/docs
 

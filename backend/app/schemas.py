@@ -40,6 +40,24 @@ class Document(BaseModel):
 # Chat ---------------------------------------------------------------------
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+    chat_id: UUID | None = Field(
+        None, description="Thread to continue (POST /courses/{id}/chats). Omit for the legacy single thread."
+    )
+
+
+class ChatThread(BaseModel):
+    id: UUID
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatThreadCreate(BaseModel):
+    title: str | None = Field(None, max_length=200)
+
+
+class ChatThreadUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
 
 
 class ChatMessage(BaseModel):
@@ -81,6 +99,15 @@ class Quiz(BaseModel):
     questions: list[QuestionPublic]
 
 
+class QuizSummary(BaseModel):
+    id: UUID
+    topic: str | None
+    created_at: datetime
+    question_count: int
+    answered_count: int
+    score: float | None = Field(None, description="Mean of the latest score per answered question")
+
+
 class AnswerSubmit(BaseModel):
     question_id: UUID
     response: str = Field(min_length=1, max_length=4000)
@@ -103,6 +130,7 @@ class FlashcardGenerate(BaseModel):
 
 class Flashcard(BaseModel):
     id: UUID
+    deck_id: UUID | None = None
     front: str
     back: str
     concept: str
@@ -110,6 +138,14 @@ class Flashcard(BaseModel):
     interval: int
     repetitions: int
     due_at: datetime
+
+
+class FlashcardDeck(BaseModel):
+    id: UUID
+    topic: str | None
+    created_at: datetime
+    card_count: int
+    due_count: int
 
 
 class ReviewSubmit(BaseModel):
@@ -151,6 +187,17 @@ class PlanDay(BaseModel):
 class StudyPlan(BaseModel):
     summary: str
     days: list[PlanDay]
+
+
+class PlanCreate(BaseModel):
+    daily_minutes: int = Field(60, ge=15, le=600)
+    days: int | None = Field(None, ge=1, le=14, description="Defaults to until the next exam")
+
+
+class SavedPlan(StudyPlan):
+    id: UUID
+    daily_minutes: int
+    created_at: datetime
 
 
 # Reels ----------------------------------------------------------------------

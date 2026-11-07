@@ -6,16 +6,17 @@ Event types (see docs/FRONTEND.md for the TypeScript union):
 
 import json
 import logging
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sse_starlette.sse import EventSourceResponse
 
 from app.agents.graph import build_graph
 from app.config import get_settings
 from app.db import get_db
 from app.deps import CurrentUser, get_current_user, get_owned_course
-from app.schemas import ChatMessage, ChatRequest
-from app.services import chat_history
+from app.schemas import ChatMessage, ChatRequest, ChatThread, ChatThreadCreate, ChatThreadUpdate
+from app.services import chat_history, planning
 from supabase import AsyncClient
 
 log = logging.getLogger(__name__)
@@ -38,8 +39,14 @@ async def chat(
     db: AsyncClient = Depends(get_db),
 ):
     course_id = course["id"]
-    rows = await chat_history.recent(db, user.id, course_id, get_settings().chat_history_limit)
-    await chat_history.save(db, user.id, course_id, "user", body.message)
+    chat_id = str(body.chat_id) if body.chat_id else None
+    if chat_id:
+        thread = await chat_history.owned_thread(db, user.id, chat_id, course_id)
+        await chat_history.touch_thread(db, thread, body.message)
+    rows = await chat_history.recent(
+        db, user.id, course_id, get_settings().chat_history_limit, chat_id
+    )
+    await chat_history.save(db, user.id, course_id, "user", body.message, chat_id)
 
     state = {
         "user_id": user.id,
@@ -82,11 +89,15 @@ async def chat(
                         yield _event("quiz", update["quiz"])
                     elif node == "planner":
                         stored_reply = f"[Study plan] {update['plan']['summary']}"
+                        try:  # keep chat-made plans in the Plans history too
+                            await planning.save_plan(db, user.id, course_id, update["plan"])
+                        except Exception:
+                            log.exception("Could not save chat plan")
                         yield _event("plan", update["plan"])
 
             reply = "".join(answer_parts) or stored_reply
             if reply:
-                await chat_history.save(db, user.id, course_id, "assistant", reply)
+                await chat_history.save(db, user.id, course_id, "assistant", reply, chat_id)
             yield _event("done", {})
         except Exception:
             log.exception("Chat run failed")
@@ -98,8 +109,57 @@ async def chat(
 @router.get("/history", response_model=list[ChatMessage])
 async def history(
     limit: int = 50,
+    chat_id: UUID | None = None,
     course: dict = Depends(get_owned_course),
     user: CurrentUser = Depends(get_current_user),
     db: AsyncClient = Depends(get_db),
 ):
-    return await chat_history.recent(db, user.id, course["id"], min(limit, 200))
+    """Messages of one thread (`chat_id`), or of the whole course when omitted."""
+    return await chat_history.recent(
+        db, user.id, course["id"], min(limit, 200), str(chat_id) if chat_id else None
+    )
+
+
+# Threads: several chats per course -----------------------------------------------
+threads = APIRouter(tags=["chat"])
+
+
+@threads.get("/courses/{course_id}/chats", response_model=list[ChatThread])
+async def list_chats(
+    course: dict = Depends(get_owned_course),
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    """Newest activity first. Untitled chats get their first message as title."""
+    return await chat_history.list_threads(db, user.id, course["id"])
+
+
+@threads.post(
+    "/courses/{course_id}/chats", response_model=ChatThread, status_code=status.HTTP_201_CREATED
+)
+async def create_chat(
+    body: ChatThreadCreate,
+    course: dict = Depends(get_owned_course),
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    return await chat_history.create_thread(db, user.id, course["id"], body.title)
+
+
+@threads.patch("/chats/{chat_id}", response_model=ChatThread)
+async def rename_chat(
+    chat_id: UUID,
+    body: ChatThreadUpdate,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    return await chat_history.rename_thread(db, user.id, str(chat_id), body.title)
+
+
+@threads.delete("/chats/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chat(
+    chat_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncClient = Depends(get_db),
+):
+    await chat_history.delete_thread(db, user.id, str(chat_id))

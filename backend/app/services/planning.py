@@ -54,3 +54,41 @@ async def make_plan(
         exams=exams,
         due_flashcards=len(await due_flashcards(db, user_id, course_id)),
     )
+
+
+# Saved plans ----------------------------------------------------------------------
+async def save_plan(
+    db: AsyncClient, user_id: str, course_id: str, plan: StudyPlan | dict, daily_minutes: int = 60
+) -> dict:
+    data = plan.model_dump(mode="json") if isinstance(plan, StudyPlan) else plan
+    res = await (
+        db.table("study_plans")
+        .insert(
+            {
+                "user_id": user_id,
+                "course_id": course_id,
+                "daily_minutes": daily_minutes,
+                "summary": data["summary"],
+                "days": data["days"],
+            }
+        )
+        .execute()
+    )
+    return res.data[0]
+
+
+async def list_plans(db: AsyncClient, user_id: str, course_id: str, limit: int = 50) -> list[dict]:
+    res = (
+        await db.table("study_plans")
+        .select("id, daily_minutes, summary, days, created_at")
+        .eq("user_id", user_id)
+        .eq("course_id", course_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return res.data or []
+
+
+async def delete_plan(db: AsyncClient, user_id: str, plan_id: str) -> None:
+    await db.table("study_plans").delete().eq("id", plan_id).eq("user_id", user_id).execute()

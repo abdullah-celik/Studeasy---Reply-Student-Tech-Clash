@@ -192,6 +192,68 @@ async def submit_answer(
     }
 
 
+# Quiz history ---------------------------------------------------------------
+def _latest(answers: list[dict]) -> dict | None:
+    return max(answers, key=lambda a: a["created_at"]) if answers else None
+
+
+def summarize_quiz(row: dict) -> dict:
+    """Question count, how many are answered and the mean of the latest score per question."""
+    questions = row.get("questions") or []
+    latest = [a for q in questions if (a := _latest(q.get("answers") or []))]
+    return {
+        "id": row["id"],
+        "topic": row.get("topic"),
+        "created_at": row["created_at"],
+        "question_count": len(questions),
+        "answered_count": len(latest),
+        "score": sum(a["score"] for a in latest) / len(latest) if latest else None,
+    }
+
+
+async def list_quizzes(db: AsyncClient, user_id: str, course_id: str, limit: int = 100) -> list[dict]:
+    res = (
+        await db.table("quizzes")
+        .select("id, topic, created_at, questions(id, answers(score, created_at))")
+        .eq("user_id", user_id)
+        .eq("course_id", course_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [summarize_quiz(r) for r in res.data or []]
+
+
+async def quiz_answers(db: AsyncClient, user_id: str, quiz_id: str) -> list[dict]:
+    """Latest result per answered question, so a reopened quiz shows its earlier answers."""
+    res = (
+        await db.table("questions")
+        .select("id, answer, explanation, answers(correct, score, feedback, created_at)")
+        .eq("quiz_id", quiz_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    out = []
+    for q in res.data or []:
+        a = _latest(q.get("answers") or [])
+        if a:
+            out.append(
+                {
+                    "question_id": q["id"],
+                    "correct": a["correct"],
+                    "score": a["score"],
+                    "feedback": a["feedback"],
+                    "correct_answer": q["answer"],
+                    "explanation": q["explanation"],
+                }
+            )
+    return out
+
+
+async def delete_quiz(db: AsyncClient, user_id: str, quiz_id: str) -> None:
+    await db.table("quizzes").delete().eq("id", quiz_id).eq("user_id", user_id).execute()
+
+
 # Flashcards ----------------------------------------------------------------
 async def create_flashcards(
     db: AsyncClient, user_id: str, course_id: str, topic: str | None, count: int
@@ -203,10 +265,66 @@ async def create_flashcards(
         topic,
         await _known_concepts(db, user_id, course_id),
     )
+    cards = deck.cards[:count]
+    if not cards:
+        return []
+    deck_row = (
+        await db.table("flashcard_decks")
+        .insert({"user_id": user_id, "course_id": course_id, "topic": topic})
+        .execute()
+    ).data[0]
     rows = [
-        {"user_id": user_id, "course_id": course_id, **c.model_dump()} for c in deck.cards[:count]
+        {"user_id": user_id, "course_id": course_id, "deck_id": deck_row["id"], **c.model_dump()}
+        for c in cards
     ]
-    return (await db.table("flashcards").insert(rows).execute()).data if rows else []
+    return (await db.table("flashcards").insert(rows).execute()).data
+
+
+def summarize_deck(row: dict, now: datetime) -> dict:
+    cards = row.get("flashcards") or []
+    return {
+        "id": row["id"],
+        "topic": row.get("topic"),
+        "created_at": row["created_at"],
+        "card_count": len(cards),
+        "due_count": sum(1 for c in cards if datetime.fromisoformat(c["due_at"]) <= now),
+    }
+
+
+async def list_decks(db: AsyncClient, user_id: str, course_id: str) -> list[dict]:
+    res = (
+        await db.table("flashcard_decks")
+        .select("id, topic, created_at, flashcards(due_at)")
+        .eq("user_id", user_id)
+        .eq("course_id", course_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    now = datetime.now(UTC)
+    return [summarize_deck(r, now) for r in res.data or []]
+
+
+async def deck_cards(db: AsyncClient, user_id: str, deck_id: str) -> list[dict]:
+    res = (
+        await db.table("flashcards")
+        .select("*")
+        .eq("deck_id", deck_id)
+        .eq("user_id", user_id)
+        .order("created_at")
+        .execute()
+    )
+    if not res.data:
+        exists = (
+            await db.table("flashcard_decks").select("id").eq("id", deck_id)
+            .eq("user_id", user_id).limit(1).execute()
+        )
+        if not exists.data:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Deck not found")
+    return res.data or []
+
+
+async def delete_deck(db: AsyncClient, user_id: str, deck_id: str) -> None:
+    await db.table("flashcard_decks").delete().eq("id", deck_id).eq("user_id", user_id).execute()
 
 
 async def due_flashcards(db: AsyncClient, user_id: str, course_id: str, limit: int = 50) -> list[dict]:

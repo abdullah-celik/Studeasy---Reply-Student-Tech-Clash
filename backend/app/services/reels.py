@@ -152,6 +152,21 @@ async def _unseen(db: AsyncClient, user_id: str, course_id: str, limit: int) -> 
     return res.data or []
 
 
+async def seen_history(db: AsyncClient, user_id: str, course_id: str, limit: int = 50) -> list[dict]:
+    """Reels already viewed, most recent first (quiz answers are stripped by the response model)."""
+    res = (
+        await db.table("reels")
+        .select("id, type, concept, content")
+        .eq("user_id", user_id)
+        .eq("course_id", course_id)
+        .not_.is_("seen_at", "null")
+        .order("seen_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return res.data or []
+
+
 async def session_stats(db: AsyncClient, user_id: str, course_id: str) -> dict:
     window = get_settings().reels_session_minutes
     since = (datetime.now(UTC) - timedelta(minutes=window)).isoformat()

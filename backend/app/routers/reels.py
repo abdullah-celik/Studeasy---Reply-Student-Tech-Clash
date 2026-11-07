@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.config import get_settings
 from app.db import get_db
 from app.deps import CurrentUser, get_current_user, get_owned_course
-from app.schemas import ReelAnswerResult, ReelAnswerSubmit, ReelFeed, ReelViewSubmit
+from app.schemas import Reel, ReelAnswerResult, ReelAnswerSubmit, ReelFeed, ReelViewSubmit
 from app.services import reels
 from supabase import AsyncClient
 
@@ -39,6 +39,17 @@ async def feed(
     return await reels.get_feed(
         db, user.id, course["id"], limit or get_settings().reels_page_size
     )
+
+
+@router.get("/courses/{course_id}/reels/history", response_model=list[Reel])
+async def history(
+    limit: int = Query(50, ge=1, le=200),
+    course: dict = Depends(get_owned_course),
+    user: CurrentUser = Depends(reels_enabled_for_user),
+    db: AsyncClient = Depends(get_db),
+):
+    """Reels already viewed, most recent first."""
+    return await reels.seen_history(db, user.id, course["id"], limit)
 
 
 @router.post("/reels/{reel_id}/view", status_code=status.HTTP_204_NO_CONTENT)

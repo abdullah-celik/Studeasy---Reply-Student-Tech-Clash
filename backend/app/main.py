@@ -52,7 +52,7 @@ async def health():
     return {"status": "ok"}
 
 
-routers = [courses.router, chat.router, quizzes.router, flashcards.router, planning.router, me.router]
+routers = [courses.router, chat.router, chat.threads, quizzes.router, flashcards.router, planning.router, me.router]
 if get_settings().enable_reels:  # optional module
     routers.append(reels.router)
 for r in routers:

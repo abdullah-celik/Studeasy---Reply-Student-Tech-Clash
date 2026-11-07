@@ -184,13 +184,29 @@ Feed loop (vertical full-screen swiper, e.g. Swiper.js or CSS scroll-snap):
 `403` from the feed means the student has reels turned off; `409` means the course has no
 material yet.
 
-## 6. Errors
+## 6. History (several chats, quizzes, decks and plans)
+
+```ts
+// Chats: create a thread, then pass its id with every message.
+const { data: chat } = await api.POST("/api/courses/{course_id}/chats", { params: { path: { course_id } }, body: {} });
+await sendChat(courseId, "Explain osmosis", onEvent, chat!.id);   // body: { message, chat_id }
+await api.GET("/api/courses/{course_id}/chat/history", { params: { path: { course_id }, query: { chat_id: chat!.id } } });
+
+await api.GET("/api/courses/{course_id}/quizzes", ...);           // QuizSummary[]
+await api.GET("/api/quizzes/{quiz_id}/answers", ...);             // restore earlier answers
+await api.GET("/api/courses/{course_id}/flashcards/decks", ...);  // FlashcardDeck[]
+await api.POST("/api/courses/{course_id}/plans", { ..., body: { daily_minutes: 60 } });  // SavedPlan
+```
+
+A thread's title is set from its first message; rename it with `PATCH /api/chats/{chat_id}`.
+
+## 7. Errors
 
 Standard FastAPI shape: `{ "detail": string | ValidationError[] }`.
 `401` → refresh the Supabase session or redirect to login; `409` → the course has no
 material yet; `415` / `413` → unsupported or too-large upload.
 
-## 7. CORS
+## 8. CORS
 
 Add the frontend origin to `CORS_ORIGINS` in the backend `.env`
 (defaults: `http://localhost:5173` for Vite, `http://localhost:3000` for Next.js).
