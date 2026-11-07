@@ -8,6 +8,7 @@
 The Supabase client is passed per run via config["configurable"]["db"].
 """
 
+import logging
 from functools import lru_cache
 
 from langchain_core.runnables import RunnableConfig
@@ -18,6 +19,8 @@ from app.agents.state import ChatState
 from app.config import get_settings
 from app.errors import NoMaterialError
 from app.services import planning, quizzes, retrieval
+
+log = logging.getLogger(__name__)
 
 CHAT_QUIZ_TYPES = ["multiple_choice", "true_false", "open"]
 CHAT_QUIZ_COUNT = 5
@@ -66,6 +69,9 @@ async def quiz_node(state: ChatState, config: RunnableConfig) -> dict:
         return {"quiz": quiz}
     except NoMaterialError as e:
         return {"error": e.message}
+    except Exception:
+        log.exception("Quiz generation from chat failed")
+        return {"error": "I couldn't build a quiz this time. Please try again."}
 
 
 async def planner_node(state: ChatState, config: RunnableConfig) -> dict:

@@ -137,6 +137,15 @@ def insert_break(items: list[dict], session_reels: int, break_every: int, stats:
     return items
 
 
+REEL_ROW_DEFAULTS = {"source_chunk_ids": [], "flashcard_id": None}
+
+
+def normalise_rows(rows: list[dict]) -> list[dict]:
+    """A bulk insert uses the union of all keys and sends NULL for missing ones, which
+    breaks NOT NULL columns, so every row gets the same keys with proper defaults."""
+    return [{**REEL_ROW_DEFAULTS, **r} for r in rows]
+
+
 # Database-backed logic -------------------------------------------------------
 async def _unseen(db: AsyncClient, user_id: str, course_id: str, limit: int) -> list[dict]:
     res = (
@@ -240,7 +249,9 @@ async def _concept_group(
     return rows
 
 
-async def _due_card_rows(db: AsyncClient, user_id: str, course_id: str) -> list[dict]:
+async def _due_card_rows(
+    db: AsyncClient, user_id: str, course_id: str, exclude: set[str]
+) -> list[dict]:
     due = await due_flashcards(db, user_id, course_id, limit=10)
     if not due:
         return []
@@ -253,7 +264,8 @@ async def _due_card_rows(db: AsyncClient, user_id: str, course_id: str) -> list[
         .not_.is_("flashcard_id", "null")
         .execute()
     ).data or []
-    already = {r["flashcard_id"] for r in queued}
+    # skip cards already queued as reels, and cards this batch just created (they're due now)
+    already = {r["flashcard_id"] for r in queued} | exclude
     return [
         {
             "user_id": user_id,
@@ -261,6 +273,7 @@ async def _due_card_rows(db: AsyncClient, user_id: str, course_id: str) -> list[
             "type": "flashcard",
             "concept": c["concept"],
             "flashcard_id": c["id"],
+            "source_chunk_ids": [],
             "content": {"flashcard_id": c["id"], "front": c["front"], "back": c["back"]},
         }
         for c in due
@@ -292,8 +305,9 @@ async def generate_batch(db: AsyncClient, user_id: str, course_id: str) -> int:
     for e in errors:
         log.warning("Reel generation failed: %r", e)
 
-    due_rows = await _due_card_rows(db, user_id, course_id)
-    rows = arrange(groups, due_rows)
+    new_cards = {r["flashcard_id"] for g in groups for r in g if r.get("flashcard_id")}
+    due_rows = await _due_card_rows(db, user_id, course_id, exclude=new_cards)
+    rows = normalise_rows(arrange(groups, due_rows))
     if not rows:
         raise errors[0] if errors else NoMaterialError()
     await db.table("reels").insert(rows).execute()

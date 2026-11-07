@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.agents.lenient import LStr, LStrList
 from app.llm import structured
 from app.schemas import MnemonicContent, MythFactContent
 
@@ -26,23 +27,23 @@ Produce for the concept{concept_line}:
 
 
 class ExplainerGen(BaseModel):
-    hook: str
-    points: list[str]
-    takeaway: str
+    hook: LStr
+    points: LStrList
+    takeaway: LStr
     emoji: str = "\U0001f4a1"
 
 
 class QuizGen(BaseModel):
-    question: str
+    question: LStr
     kind: Literal["multiple_choice", "true_false"]
-    options: list[str]
-    answer: str
-    explanation: str
+    options: LStrList = Field(default_factory=list)
+    answer: LStr
+    explanation: LStr = ""
 
 
 class FlashcardGen(BaseModel):
-    front: str
-    back: str
+    front: LStr
+    back: LStr
 
 
 class ConceptReels(BaseModel):
