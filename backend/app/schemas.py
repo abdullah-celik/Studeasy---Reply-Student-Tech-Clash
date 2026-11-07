@@ -5,7 +5,7 @@ These are the API contract with the TypeScript frontend: FastAPI turns them into
 """
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -151,3 +151,129 @@ class PlanDay(BaseModel):
 class StudyPlan(BaseModel):
     summary: str
     days: list[PlanDay]
+
+
+# Reels ----------------------------------------------------------------------
+ReelType = Literal["explainer", "quiz", "flashcard", "myth_fact", "mnemonic"]
+
+
+class ExplainerContent(BaseModel):
+    hook: str
+    points: list[str]
+    takeaway: str
+    emoji: str = "\U0001f4a1"
+
+
+class QuizContent(BaseModel):
+    """Public quiz card: the answer is checked server-side via POST /reels/{id}/answer."""
+
+    question: str
+    kind: Literal["multiple_choice", "true_false"]
+    options: list[str]
+
+
+class FlashcardContent(BaseModel):
+    flashcard_id: UUID  # rate it with POST /flashcards/{id}/review (SM-2)
+    front: str
+    back: str
+
+
+class MythFactContent(BaseModel):
+    myth: str
+    fact: str
+    why: str
+
+
+class MnemonicContent(BaseModel):
+    mnemonic: str
+    explanation: str
+
+
+class BreakContent(BaseModel):
+    title: str
+    message: str
+    reels_watched: int
+    minutes: int
+    concepts: list[str]
+
+
+class ExplainerReel(BaseModel):
+    type: Literal["explainer"]
+    id: UUID
+    concept: str
+    content: ExplainerContent
+
+
+class QuizReel(BaseModel):
+    type: Literal["quiz"]
+    id: UUID
+    concept: str
+    content: QuizContent
+
+
+class FlashcardReel(BaseModel):
+    type: Literal["flashcard"]
+    id: UUID
+    concept: str
+    content: FlashcardContent
+
+
+class MythFactReel(BaseModel):
+    type: Literal["myth_fact"]
+    id: UUID
+    concept: str
+    content: MythFactContent
+
+
+class MnemonicReel(BaseModel):
+    type: Literal["mnemonic"]
+    id: UUID
+    concept: str
+    content: MnemonicContent
+
+
+class BreakReel(BaseModel):
+    """Synthetic wellbeing card (not stored, not tracked)."""
+
+    type: Literal["break"]
+    content: BreakContent
+
+
+Reel = Annotated[
+    ExplainerReel | QuizReel | FlashcardReel | MythFactReel | MnemonicReel | BreakReel,
+    Field(discriminator="type"),
+]
+
+
+class ReelFeed(BaseModel):
+    items: list[Reel]
+    session_reels: int = Field(description="Reels viewed in the current session")
+    break_every: int
+
+
+class ReelViewSubmit(BaseModel):
+    watch_ms: int = Field(ge=0, le=3_600_000)
+    completed: bool = False
+
+
+class ReelAnswerSubmit(BaseModel):
+    response: str = Field(min_length=1, max_length=500)
+
+
+class ReelAnswerResult(BaseModel):
+    correct: bool
+    correct_answer: str
+    explanation: str
+
+
+# Preferences & features -------------------------------------------------------
+class Preferences(BaseModel):
+    reels_enabled: bool
+
+
+class PreferencesUpdate(BaseModel):
+    reels_enabled: bool | None = None
+
+
+class Features(BaseModel):
+    reels: bool

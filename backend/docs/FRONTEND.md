@@ -140,13 +140,57 @@ Typical rendering per event:
 | `plan` | render the day-by-day plan |
 | `error` | toast / inline message (e.g. "Upload course material first") |
 
-## 5. Errors
+## 5. Reels (optional module)
+
+Two switches decide whether to show the Reels tab:
+
+```ts
+const { data: features } = await api.GET("/api/features");          // server switch
+const { data: prefs } = await api.GET("/api/me/preferences");        // student switch
+const showReelsTab = features?.reels && prefs?.reels_enabled;
+
+// settings toggle
+await api.PATCH("/api/me/preferences", { body: { reels_enabled: true } });
+```
+
+`ReelFeed.items` is a discriminated union on `type`, generated from OpenAPI:
+
+```ts
+type Reel = components["schemas"]["ReelFeed"]["items"][number];
+
+function ReelCard({ reel }: { reel: Reel }) {
+  switch (reel.type) {
+    case "explainer":  /* reel.content.hook, .points[], .takeaway, .emoji */ break;
+    case "quiz":       /* reel.content.question, .options[], .kind */ break;
+    case "flashcard":  /* tap to flip: .front / .back; rate via /flashcards/{flashcard_id}/review */ break;
+    case "myth_fact":  /* .myth, .fact, .why */ break;
+    case "mnemonic":   /* .mnemonic, .explanation */ break;
+    case "break":      /* wellbeing card: .title, .message, .reels_watched, .minutes, .concepts */ break;
+  }
+}
+```
+
+Feed loop (vertical full-screen swiper, e.g. Swiper.js or CSS scroll-snap):
+
+1. `GET /api/courses/{id}/reels/feed` and render the items.
+2. When the student is ~2 reels from the end, fetch the next page and append it. The first
+   page after new material can take a few seconds because it's generated: show a skeleton card.
+3. When a reel leaves the screen, `POST /api/reels/{id}/view` with `{ watch_ms, completed }`
+   (skip for `break` cards, which have no `id`). Viewed reels never come back.
+4. Quiz reel: `POST /api/reels/{id}/answer` with `{ response }` → `{ correct, correct_answer, explanation }`.
+5. Flashcard reel: after the flip, offer 3 buttons mapped to SM-2 quality, e.g. Again = 1,
+   Good = 4, Easy = 5, sent to `POST /api/flashcards/{flashcard_id}/review`.
+
+`403` from the feed means the student has reels turned off; `409` means the course has no
+material yet.
+
+## 6. Errors
 
 Standard FastAPI shape: `{ "detail": string | ValidationError[] }`.
 `401` → refresh the Supabase session or redirect to login; `409` → the course has no
 material yet; `415` / `413` → unsupported or too-large upload.
 
-## 6. CORS
+## 7. CORS
 
 Add the frontend origin to `CORS_ORIGINS` in the backend `.env`
 (defaults: `http://localhost:5173` for Vite, `http://localhost:3000` for Next.js).

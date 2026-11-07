@@ -1,9 +1,10 @@
--- Studeasy schema. Run once in the Supabase SQL editor.
+-- Studeasy schema. Idempotent: safe to re-run in the Supabase SQL editor after updates.
 -- Every table carries user_id so Row Level Security can scope rows to the student.
 -- The backend uses the service-role key (bypasses RLS) and filters by user_id itself;
 -- RLS protects the data if the frontend ever reads tables directly with supabase-js.
 
-create extension if not exists vector;
+-- pgvector lives in the extensions schema (Supabase best practice).
+create extension if not exists vector with schema extensions;
 
 -- Courses ------------------------------------------------------------------
 create table if not exists courses (
@@ -35,10 +36,10 @@ create table if not exists chunks (
     document_id uuid not null references documents(id) on delete cascade,
     content     text not null,
     location    text not null,          -- e.g. "page 3", "slide 7", "section: Intro"
-    embedding   vector(1536) not null
+    embedding   extensions.vector(1536) not null
 );
 create index if not exists chunks_course_idx on chunks (course_id);
-create index if not exists chunks_embedding_idx on chunks using hnsw (embedding vector_cosine_ops);
+create index if not exists chunks_embedding_idx on chunks using hnsw (embedding extensions.vector_cosine_ops);
 
 -- Mastery map: one row per (student, course, concept) ----------------------
 create table if not exists mastery (
@@ -123,24 +124,60 @@ create table if not exists chat_messages (
 );
 create index if not exists chat_messages_course_idx on chat_messages (course_id, created_at);
 
+-- Student preferences (opt-in switches for optional modules) ---------------
+create table if not exists user_preferences (
+    user_id       uuid primary key references auth.users(id) on delete cascade,
+    reels_enabled boolean not null default false,
+    updated_at    timestamptz not null default now()
+);
+
+-- Reels: short swipeable study cards, generated per student on demand --------
+create table if not exists reels (
+    id               uuid primary key default gen_random_uuid(),
+    seq              bigint generated always as identity,   -- feed order
+    user_id          uuid not null references auth.users(id) on delete cascade,
+    course_id        uuid not null references courses(id) on delete cascade,
+    type             text not null
+                     check (type in ('explainer', 'quiz', 'flashcard', 'myth_fact', 'mnemonic')),
+    concept          text not null,
+    content          jsonb not null,      -- quiz answers live here; the API strips them
+    source_chunk_ids uuid[] not null default '{}',
+    flashcard_id     uuid references flashcards(id) on delete cascade,
+    seen_at          timestamptz,
+    created_at       timestamptz not null default now()
+);
+create index if not exists reels_feed_idx on reels (user_id, course_id, seen_at, seq);
+
+create table if not exists reel_views (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references auth.users(id) on delete cascade,
+    reel_id     uuid not null references reels(id) on delete cascade,
+    watch_ms    int not null default 0,
+    completed   boolean not null default false,
+    created_at  timestamptz not null default now()
+);
+create index if not exists reel_views_session_idx on reel_views (user_id, created_at);
+
 -- Row Level Security: a student only ever sees their own rows -------------
 do $$
 declare t text;
 begin
     foreach t in array array['courses','documents','chunks','mastery','quizzes',
-                             'questions','answers','flashcards','exams','chat_messages']
+                             'questions','answers','flashcards','exams','chat_messages',
+                             'user_preferences','reels','reel_views']
     loop
         execute format('alter table %I enable row level security', t);
         execute format('drop policy if exists owner_all on %I', t);
         execute format(
-            'create policy owner_all on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())',
+            'create policy owner_all on %I for all to authenticated '
+            'using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id)',
             t);
     end loop;
 end $$;
 
 -- Vector search used by the retrieval service ------------------------------
 create or replace function match_chunks(
-    query_embedding vector(1536),
+    query_embedding extensions.vector(1536),
     p_course_id uuid,
     p_user_id uuid,
     match_count int default 6
@@ -154,6 +191,7 @@ returns table (
     similarity float
 )
 language sql stable
+set search_path = public, extensions
 as $$
     select c.id, c.document_id, c.content, c.location, d.filename,
            1 - (c.embedding <=> query_embedding) as similarity
@@ -166,4 +204,35 @@ as $$
 $$;
 
 -- Only the backend (service role) should call match_chunks.
-revoke execute on function match_chunks(vector, uuid, uuid, int) from public, anon, authenticated;
+revoke execute on function match_chunks(extensions.vector, uuid, uuid, int) from public, anon, authenticated;
+grant execute on function match_chunks(extensions.vector, uuid, uuid, int) to service_role;
+
+-- Indexes on foreign keys (used by ownership filters and cascading deletes) -------
+create index if not exists courses_user_idx        on courses (user_id);
+create index if not exists documents_course_idx    on documents (course_id);
+create index if not exists documents_user_idx      on documents (user_id);
+create index if not exists chunks_document_idx     on chunks (document_id);
+create index if not exists chunks_user_idx         on chunks (user_id);
+create index if not exists mastery_course_idx      on mastery (course_id);
+create index if not exists quizzes_course_idx      on quizzes (course_id);
+create index if not exists quizzes_user_idx        on quizzes (user_id);
+create index if not exists questions_quiz_idx      on questions (quiz_id);
+create index if not exists questions_user_idx      on questions (user_id);
+create index if not exists answers_question_idx    on answers (question_id);
+create index if not exists answers_user_idx        on answers (user_id);
+create index if not exists flashcards_course_idx   on flashcards (course_id);
+create index if not exists exams_course_idx        on exams (course_id);
+create index if not exists exams_user_idx          on exams (user_id);
+create index if not exists chat_messages_user_idx  on chat_messages (user_id);
+create index if not exists reels_course_idx        on reels (course_id);
+create index if not exists reels_flashcard_idx     on reels (flashcard_id);
+create index if not exists reel_views_reel_idx     on reel_views (reel_id);
+
+-- Data API access ----------------------------------------------------------
+-- The backend talks to PostgREST with the service role; newer projects don't always
+-- auto-grant new tables, so grant explicitly. `authenticated` gets table access too so
+-- the frontend may read its own rows with supabase-js; RLS limits it to the owner.
+grant usage on schema public to service_role, authenticated;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to service_role, authenticated;

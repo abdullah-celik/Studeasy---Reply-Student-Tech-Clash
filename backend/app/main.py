@@ -9,7 +9,7 @@ from fastapi.routing import APIRoute
 from app.config import get_settings
 from app.db import init_supabase
 from app.errors import NoMaterialError
-from app.routers import chat, courses, flashcards, planning, quizzes
+from app.routers import chat, courses, flashcards, me, planning, quizzes, reels
 
 logging.basicConfig(level=logging.INFO)
 
@@ -52,5 +52,8 @@ async def health():
     return {"status": "ok"}
 
 
-for r in (courses.router, chat.router, quizzes.router, flashcards.router, planning.router):
+routers = [courses.router, chat.router, quizzes.router, flashcards.router, planning.router, me.router]
+if get_settings().enable_reels:  # optional module
+    routers.append(reels.router)
+for r in routers:
     app.include_router(r, prefix="/api")
