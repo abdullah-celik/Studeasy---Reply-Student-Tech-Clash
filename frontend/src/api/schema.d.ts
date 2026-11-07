@@ -300,6 +300,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Features
+         * @description Which optional modules this deployment has. No auth: the frontend reads it at startup.
+         */
+        get: operations["me-features"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Preferences */
+        get: operations["me-get_preferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Preferences */
+        patch: operations["me-update_preferences"];
+        trace?: never;
+    };
+    "/api/courses/{course_id}/reels/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Feed
+         * @description Next page of unseen reels. Call again when ~2 are left; new ones are generated on demand.
+         */
+        get: operations["reels-feed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reels/{reel_id}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * View
+         * @description Send when the student swipes away: marks the reel seen and records watch time.
+         */
+        post: operations["reels-view"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reels/{reel_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer */
+        post: operations["reels-answer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -336,6 +431,31 @@ export interface components {
         "Body_courses-upload_documents": {
             /** Files */
             files: string[];
+        };
+        /** BreakContent */
+        BreakContent: {
+            /** Title */
+            title: string;
+            /** Message */
+            message: string;
+            /** Reels Watched */
+            reels_watched: number;
+            /** Minutes */
+            minutes: number;
+            /** Concepts */
+            concepts: string[];
+        };
+        /**
+         * BreakReel
+         * @description Synthetic wellbeing card (not stored, not tracked).
+         */
+        BreakReel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "break";
+            content: components["schemas"]["BreakContent"];
         };
         /** ChatMessage */
         ChatMessage: {
@@ -440,6 +560,41 @@ export interface components {
              */
             exam_date: string;
         };
+        /** ExplainerContent */
+        ExplainerContent: {
+            /** Hook */
+            hook: string;
+            /** Points */
+            points: string[];
+            /** Takeaway */
+            takeaway: string;
+            /**
+             * Emoji
+             * @default 💡
+             */
+            emoji: string;
+        };
+        /** ExplainerReel */
+        ExplainerReel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "explainer";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Concept */
+            concept: string;
+            content: components["schemas"]["ExplainerContent"];
+        };
+        /** Features */
+        Features: {
+            /** Reels */
+            reels: boolean;
+        };
         /** Flashcard */
         Flashcard: {
             /**
@@ -465,6 +620,18 @@ export interface components {
              */
             due_at: string;
         };
+        /** FlashcardContent */
+        FlashcardContent: {
+            /**
+             * Flashcard Id
+             * Format: uuid
+             */
+            flashcard_id: string;
+            /** Front */
+            front: string;
+            /** Back */
+            back: string;
+        };
         /** FlashcardGenerate */
         FlashcardGenerate: {
             /** Topic */
@@ -474,6 +641,22 @@ export interface components {
              * @default 10
              */
             count: number;
+        };
+        /** FlashcardReel */
+        FlashcardReel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "flashcard";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Concept */
+            concept: string;
+            content: components["schemas"]["FlashcardContent"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -488,6 +671,54 @@ export interface components {
             score: number;
             /** Attempts */
             attempts: number;
+        };
+        /** MnemonicContent */
+        MnemonicContent: {
+            /** Mnemonic */
+            mnemonic: string;
+            /** Explanation */
+            explanation: string;
+        };
+        /** MnemonicReel */
+        MnemonicReel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "mnemonic";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Concept */
+            concept: string;
+            content: components["schemas"]["MnemonicContent"];
+        };
+        /** MythFactContent */
+        MythFactContent: {
+            /** Myth */
+            myth: string;
+            /** Fact */
+            fact: string;
+            /** Why */
+            why: string;
+        };
+        /** MythFactReel */
+        MythFactReel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "myth_fact";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Concept */
+            concept: string;
+            content: components["schemas"]["MythFactContent"];
         };
         /** PlanDay */
         PlanDay: {
@@ -512,6 +743,16 @@ export interface components {
             minutes: number;
             /** Note */
             note: string;
+        };
+        /** Preferences */
+        Preferences: {
+            /** Reels Enabled */
+            reels_enabled: boolean;
+        };
+        /** PreferencesUpdate */
+        PreferencesUpdate: {
+            /** Reels Enabled */
+            reels_enabled?: boolean | null;
         };
         /**
          * QuestionPublic
@@ -557,6 +798,21 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["QuestionPublic"][];
         };
+        /**
+         * QuizContent
+         * @description Public quiz card: the answer is checked server-side via POST /reels/{id}/answer.
+         */
+        QuizContent: {
+            /** Question */
+            question: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "multiple_choice" | "true_false";
+            /** Options */
+            options: string[];
+        };
         /** QuizCreate */
         QuizCreate: {
             /**
@@ -578,6 +834,58 @@ export interface components {
              * @default 5
              */
             count: number;
+        };
+        /** QuizReel */
+        QuizReel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "quiz";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Concept */
+            concept: string;
+            content: components["schemas"]["QuizContent"];
+        };
+        /** ReelAnswerResult */
+        ReelAnswerResult: {
+            /** Correct */
+            correct: boolean;
+            /** Correct Answer */
+            correct_answer: string;
+            /** Explanation */
+            explanation: string;
+        };
+        /** ReelAnswerSubmit */
+        ReelAnswerSubmit: {
+            /** Response */
+            response: string;
+        };
+        /** ReelFeed */
+        ReelFeed: {
+            /** Items */
+            items: (components["schemas"]["ExplainerReel"] | components["schemas"]["QuizReel"] | components["schemas"]["FlashcardReel"] | components["schemas"]["MythFactReel"] | components["schemas"]["MnemonicReel"] | components["schemas"]["BreakReel"])[];
+            /**
+             * Session Reels
+             * @description Reels viewed in the current session
+             */
+            session_reels: number;
+            /** Break Every */
+            break_every: number;
+        };
+        /** ReelViewSubmit */
+        ReelViewSubmit: {
+            /** Watch Ms */
+            watch_ms: number;
+            /**
+             * Completed
+             * @default false
+             */
+            completed: boolean;
         };
         /** ReviewSubmit */
         ReviewSubmit: {
@@ -1262,6 +1570,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StudyPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "me-features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Features"];
+                };
+            };
+        };
+    };
+    "me-get_preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+        };
+    };
+    "me-update_preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferencesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "reels-feed": {
+        parameters: {
+            query?: {
+                limit?: number | null;
+            };
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReelFeed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "reels-view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReelViewSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "reels-answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReelAnswerSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReelAnswerResult"];
                 };
             };
             /** @description Validation Error */
