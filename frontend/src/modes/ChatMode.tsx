@@ -66,10 +66,15 @@ export function ChatMode({ courseId, hasMaterial, onCite }: ModeProps) {
           hasMaterial={hasMaterial}
           onCite={onCite}
           ensureChat={async () => {
-            const t = await call(api.POST("/api/courses/{course_id}/chats", { params: { path: { course_id: courseId } }, body: {} }));
-            setThreads((ts) => [t, ...ts]);
-            setActive(t.id);
-            return t.id;
+            try {
+              const t = await call(api.POST("/api/courses/{course_id}/chats", { params: { path: { course_id: courseId } }, body: {} }));
+              setThreads((ts) => [t, ...ts]);
+              setActive(t.id);
+              return t.id;
+            } catch {
+              // Backend without chat threads (database not migrated yet): use the single course thread.
+              return null;
+            }
           }}
           onActivity={(what) => {
             // Title is set from the first message; quizzes/plans show up in their own tabs.

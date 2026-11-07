@@ -268,15 +268,18 @@ async def create_flashcards(
     cards = deck.cards[:count]
     if not cards:
         return []
-    deck_row = (
-        await db.table("flashcard_decks")
-        .insert({"user_id": user_id, "course_id": course_id, "topic": topic})
-        .execute()
-    ).data[0]
-    rows = [
-        {"user_id": user_id, "course_id": course_id, "deck_id": deck_row["id"], **c.model_dump()}
-        for c in cards
-    ]
+    rows = [{"user_id": user_id, "course_id": course_id, **c.model_dump()} for c in cards]
+    try:
+        deck_row = (
+            await db.table("flashcard_decks")
+            .insert({"user_id": user_id, "course_id": course_id, "topic": topic})
+            .execute()
+        ).data[0]
+    except Exception:
+        # Database not migrated yet (re-run supabase/schema.sql): keep the old deck-less cards.
+        log.exception("Could not create a flashcard deck; saving cards without one")
+    else:
+        rows = [{**r, "deck_id": deck_row["id"]} for r in rows]
     return (await db.table("flashcards").insert(rows).execute()).data
 
 

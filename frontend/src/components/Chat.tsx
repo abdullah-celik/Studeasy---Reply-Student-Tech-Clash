@@ -41,8 +41,8 @@ export function Chat({
 }: {
   courseId: string;
   chatId: string | null;
-  /** Creates the thread on the first message of a new chat and returns its id. */
-  ensureChat: () => Promise<string>;
+  /** Creates the thread on the first message of a new chat and returns its id (null: no threads). */
+  ensureChat: () => Promise<string | null>;
   /** Something changed that the sidebars care about (title, quiz or plan created). */
   onActivity: (what: "message" | "quiz" | "plan") => void;
   onCite: (filename: string) => void;
@@ -117,7 +117,7 @@ export function Chat({
         id = await ensureChat();
         createdHere.current = id;
       }
-      await sendChat(courseId, text, onEvent, id);
+      await sendChat(courseId, text, onEvent, id ?? undefined);
       onActivity("message");
     } catch (err) {
       patchLast((m) => ({ ...m, error: err instanceof Error ? err.message : String(err) }));
