@@ -3,6 +3,7 @@ import { API_URL, api, authHeader, call, errorMessage, type Document } from "../
 import type { DocsState } from "../lib/useDocuments";
 import { timeAgo } from "../lib/format";
 import { ErrorBox } from "./ErrorBox";
+import { Loader } from "./Loader";
 import { PixelIcon } from "./PixelIcon";
 
 const ACCEPT = [".pdf", ".pptx", ".docx", ".txt", ".md"];
@@ -76,7 +77,7 @@ export function Sources({ courseId, state, highlight }: { courseId: string; stat
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileRef.current?.click()}
       >
         <PixelIcon name="upload" size={20} />
-        <span>{uploading.length ? `Uploading ${uploading.length} file(s)…` : "Drop files or click to add"}</span>
+        {uploading.length ? <Loader inline size="sm" label={`Uploading ${uploading.length} file(s)…`} /> : <span>Drop files or click to add</span>}
         <span className="muted small">PDF · PPTX · DOCX · TXT · MD</span>
         <input
           ref={fileRef}
@@ -101,7 +102,7 @@ export function Sources({ courseId, state, highlight }: { courseId: string; stat
               <span className="src-name" title={d.filename}>{d.filename}</span>
               <span className="hist-sub">
                 {d.status === "ready" && `${d.chunk_count} chunks · ${timeAgo(d.created_at)}`}
-                {d.status === "processing" && <span className="badge processing">reading…</span>}
+                {d.status === "processing" && <Loader inline size="sm" label="reading…" />}
                 {d.status === "failed" && <span className="badge failed">failed</span>}
               </span>
               {d.error && <span className="small src-error">{d.error}</span>}

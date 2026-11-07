@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, call, type AnswerResult, type Quiz } from "../api/client";
 import { ErrorBox } from "./ErrorBox";
+import { Loader } from "./Loader";
 
 type Question = Quiz["questions"][number];
 
@@ -77,6 +78,7 @@ function QuestionCard({
           ))}
         </div>
       )}
+      {busy && <Loader inline size="sm" label={q.type === "open" ? "Grading your answer…" : "Checking…"} />}
       <ErrorBox error={error} />
       {result && (
         <div className={`result ${result.correct ? "ok" : "bad"}`}>

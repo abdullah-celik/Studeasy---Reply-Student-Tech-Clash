@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, call, type Flashcard, type FlashcardDeck } from "../api/client";
 import { ErrorBox } from "../components/ErrorBox";
 import { HistoryList } from "../components/HistoryList";
+import { Loader } from "../components/Loader";
 import { PixelIcon } from "../components/PixelIcon";
 import { TopicPicker } from "../components/TopicPicker";
 import { timeAgo } from "../lib/format";
@@ -109,6 +110,8 @@ function NewDeck({ courseId, hasMaterial, onCreated }: { courseId: string; hasMa
     }
   }
 
+  if (busy) return <Loader size="lg" label={`Making ${count} card${count === 1 ? "" : "s"}${topic ? ` on ${topic}` : ""}…`} />;
+
   return (
     <form className="new-form" onSubmit={generate}>
       <h2>New flashcard deck</h2>
@@ -138,7 +141,7 @@ function DeckView({ deck, onDelete, onReviewed }: { deck: FlashcardDeck; onDelet
   useEffect(load, [load]);
 
   if (error) return <ErrorBox error={error} />;
-  if (!cards) return <p className="muted">Loading deck…</p>;
+  if (!cards) return <Loader label="Loading deck…" />;
 
   const now = Date.now();
   const due = cards.filter((c) => new Date(c.due_at).getTime() <= now);

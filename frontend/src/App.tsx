@@ -3,6 +3,8 @@ import type { Session } from "@supabase/supabase-js";
 import { API_URL, api, call, supabase, type Course, type Features, type Preferences } from "./api/client";
 import { Auth } from "./components/Auth";
 import { Dashboard } from "./components/Dashboard";
+import { Loader } from "./components/Loader";
+import { Logo } from "./components/Logo";
 import { PixelIcon } from "./components/PixelIcon";
 import { Settings } from "./components/Settings";
 import { Workspace } from "./components/Workspace";
@@ -56,7 +58,7 @@ export default function App() {
     setShowSettings(false);
   }
 
-  if (loading) return <p className="container muted">Loading…</p>;
+  if (loading) return <div className="app-loading"><Loader size="lg" label="Loading Studeasy…" /></div>;
 
   const inCourse = !!session && !!course && !showSettings;
 
@@ -64,7 +66,7 @@ export default function App() {
     <div className={inCourse ? "app app-wide" : "app container"}>
       <header>
         <button className="logo" onClick={home}>
-          <PixelIcon name="book" size={22} /> <span>Studeasy</span>
+          <Logo size={32} /> <span>Studeasy</span>
         </button>
         <HealthBadge />
         {session && (

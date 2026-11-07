@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, call, type Exam, type MasteryItem, type SavedPlan } from "../api/client";
 import { ErrorBox } from "../components/ErrorBox";
 import { HistoryList } from "../components/HistoryList";
+import { Loader } from "../components/Loader";
 import { PlanView } from "../components/PlanView";
 import { pct, timeAgo } from "../lib/format";
 import type { ModeProps } from "./types";
@@ -74,6 +75,8 @@ function NewPlan({ courseId, hasMaterial, onCreated }: { courseId: string; hasMa
       setBusy(false);
     }
   }
+
+  if (busy) return <Loader size="lg" label="Planning your study days…" />;
 
   return (
     <div className="new-form wide">

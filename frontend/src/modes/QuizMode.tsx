@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, call, type AnswerResult, type Quiz, type QuestionType, type QuizSummary } from "../api/client";
 import { ErrorBox } from "../components/ErrorBox";
 import { HistoryList } from "../components/HistoryList";
+import { Loader } from "../components/Loader";
 import { QuizView } from "../components/QuizView";
 import { TopicPicker } from "../components/TopicPicker";
 import { pct, timeAgo } from "../lib/format";
@@ -32,6 +33,8 @@ function NewQuiz({ courseId, hasMaterial, onCreated }: { courseId: string; hasMa
       setBusy(false);
     }
   }
+
+  if (busy) return <Loader size="lg" label={`Writing ${count} question${count === 1 ? "" : "s"}${topic ? ` on ${topic}` : ""}…`} />;
 
   return (
     <form className="new-form" onSubmit={generate}>
@@ -79,7 +82,7 @@ function OpenQuiz({ id, summary, onAnswered, onDelete }: { id: string; summary?:
   }, [id]);
 
   if (error) return <ErrorBox error={error} />;
-  if (!data) return <p className="muted">Loading quiz…</p>;
+  if (!data) return <Loader label="Loading quiz…" />;
   const total = data.quiz.questions.length;
   const answered = summary?.answered_count ?? data.answers.length;
 

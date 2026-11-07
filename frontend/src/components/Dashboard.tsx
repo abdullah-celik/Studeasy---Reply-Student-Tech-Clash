@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, call, type Course } from "../api/client";
 import { timeAgo } from "../lib/format";
 import { ErrorBox } from "./ErrorBox";
+import { Loader } from "./Loader";
 import { PixelIcon } from "./PixelIcon";
 
 const TINTS = ["lavender", "mint", "peach", "sky", "pink", "butter"];
@@ -84,7 +85,7 @@ export function Dashboard({ onOpen }: { onOpen: (c: Course) => void }) {
           </button>
         )}
       </div>
-      {courses === null && <p className="muted">Loading…</p>}
+      {courses === null && <Loader label="Loading your courses…" />}
       {courses?.length === 0 && !creating && <p className="muted center">Create your first course, then drop in your notes or slides.</p>}
     </div>
   );

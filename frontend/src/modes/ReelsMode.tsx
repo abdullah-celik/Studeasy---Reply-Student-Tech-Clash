@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, call, type Reel } from "../api/client";
 import { ErrorBox } from "../components/ErrorBox";
 import { HistoryList } from "../components/HistoryList";
+import { Loader } from "../components/Loader";
 import { PixelIcon } from "../components/PixelIcon";
 import { ReelBody, Reels } from "../components/Reels";
 import { TYPE_LABEL, reelId } from "../lib/reels";
@@ -33,7 +34,7 @@ function EnableReels({ onEnable, busy }: { onEnable: () => void; busy: boolean }
         A swipeable feed of bite-sized cards (explainers, quick quizzes, flashcards, myth vs fact and mnemonics) built from
         your weakest concepts. It suggests a break every so often.
       </p>
-      <button onClick={onEnable} disabled={busy}>{busy ? "Turning on…" : "Turn on reels"}</button>
+      {busy ? <Loader inline size="sm" label="Turning on…" /> : <button onClick={onEnable}>Turn on reels</button>}
       <p className="muted small">You can turn them off again in settings.</p>
     </div>
   );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, call, type Reel, type ReelAnswerResult } from "../api/client";
 import { TYPE_LABEL, reelId } from "../lib/reels";
 import { ErrorBox } from "./ErrorBox";
+import { Loader } from "./Loader";
 import { PixelIcon } from "./PixelIcon";
 
 type Tracked = { reel: Reel; key: string };
@@ -284,8 +285,7 @@ export function Reels({
         {(loading || (items.length === 0 && !error)) && (
           <section className="reel">
             <div className="reel-card skeleton">
-              <div className="bar-sk" /><div className="bar-sk short" /><div className="bar-sk" />
-              <p className="muted small center">Generating reels from your notes…</p>
+              <Loader size="lg" label="Generating reels from your notes…" />
             </div>
           </section>
         )}

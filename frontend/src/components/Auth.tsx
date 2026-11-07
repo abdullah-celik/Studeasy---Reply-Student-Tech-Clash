@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../api/client";
+import { Logo } from "./Logo";
 
 export function Auth() {
   const [email, setEmail] = useState("");
@@ -21,6 +22,7 @@ export function Auth() {
 
   return (
     <div className="card narrow">
+      <Logo size={96} className="auth-logo" />
       <h1>Studeasy</h1>
       <p className="muted">Sign in with your Supabase account.</p>
       <form

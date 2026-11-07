@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Loader } from "./Loader";
 import { PixelIcon, type IconName } from "./PixelIcon";
 
 export type HistoryItem = {
@@ -51,7 +52,7 @@ export function HistoryList({
         <PixelIcon name={icon} size={12} /> {title}
       </div>
       <ul className="hist-list">
-        {loading && items.length === 0 && <li className="muted small hist-empty">Loading…</li>}
+        {loading && items.length === 0 && <li className="hist-empty"><Loader inline size="sm" label="Loading…" /></li>}
         {!loading && items.length === 0 && <li className="muted small hist-empty">{empty}</li>}
         {items.map((it) => (
           <li key={it.id} className={`hist-item ${it.id === selectedId ? "selected" : ""}`}>

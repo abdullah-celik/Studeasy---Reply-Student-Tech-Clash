@@ -558,6 +558,25 @@ button.chip { cursor: pointer; }
   .hist-actions, .course-delete { opacity: 1; }
 }
 
+/* Logo & loader --------------------------------------------------------------- */
+.logo-img, .loader-img { image-rendering: pixelated; image-rendering: crisp-edges; display: block; flex-shrink: 0; }
+.logo { gap: 8px; }
+.auth-logo { margin: 0 auto 4px; }
+.narrow h1 { text-align: center; }
+.narrow > p.muted { text-align: center; }
+.chat-empty .logo-img { margin-bottom: 4px; }
+.loader { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px 12px; text-align: center; width: 100%; }
+.loader.inline { flex-direction: row; justify-content: flex-start; gap: 8px; padding: 2px 0; width: auto; }
+.loader-label { color: var(--muted); }
+.loader-lg { min-height: 260px; }
+.loader-lg .loader-label { font-size: 1.05rem; }
+.loader.inline .loader-label { font-size: 0.88rem; }
+.bob { animation: bob 0.8s steps(2, jump-none) infinite alternate; }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-12%); } }
+.app-loading { min-height: 100vh; display: grid; place-items: center; }
+.dropzone .loader.inline { justify-content: center; }
+.reel-card.skeleton { justify-content: center; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

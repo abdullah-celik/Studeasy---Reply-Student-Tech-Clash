@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { api, call, type Quiz, type Source, type StudyPlan } from "../api/client";
 import { sendChat, type ChatEvent } from "../api/chat";
 import { ErrorBox } from "./ErrorBox";
-import { PixelIcon } from "./PixelIcon";
+import { Loader } from "./Loader";
+import { Logo } from "./Logo";
 import { PlanView } from "./PlanView";
 import { QuizView } from "./QuizView";
 
@@ -136,7 +137,7 @@ export function Chat({
       <div className="messages">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <PixelIcon name="chat" size={40} />
+            <Logo size={96} />
             <h2>What do you want to learn?</h2>
             <p className="muted">
               Ask for an explanation, a quiz or a study plan. Answers are grounded in your course sources.
@@ -154,7 +155,7 @@ export function Chat({
         {messages.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>
             {m.role === "assistant" && busy && i === last && !m.text && !m.quiz && !m.plan && !m.error && (
-              <div className="muted typing">{WORKING[m.intent ?? ""] ?? "Thinking…"}</div>
+              <Loader inline size="sm" label={WORKING[m.intent ?? ""] ?? "Thinking…"} />
             )}
             {m.text && <div className="text">{m.text}</div>}
             {m.sources && m.sources.length > 0 && (
