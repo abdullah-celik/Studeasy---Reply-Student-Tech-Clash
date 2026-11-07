@@ -75,7 +75,7 @@ export function Flashcards({ courseId }: { courseId: string }) {
       <ErrorBox error={error} />
 
       <h3>Review ({due.length} due)</h3>
-      {!card && <p className="muted">Nothing due right now. 🎉</p>}
+      {!card && <p className="muted">Nothing due right now. Nice work!</p>}
       {card && (
         <div className="flashcard">
           <div className="muted small">{card.concept} · interval {card.interval}d · ease {card.ease.toFixed(2)}</div>

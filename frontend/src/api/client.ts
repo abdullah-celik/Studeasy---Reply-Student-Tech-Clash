@@ -50,7 +50,22 @@ export function errorMessage(err: unknown): string {
 export async function call<T>(p: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
   const { data, error, response } = await p;
   if (error !== undefined || !response.ok) {
-    throw new Error(`${response.status}: ${errorMessage(error)}`);
+    throw new ApiError(response.status, `${response.status}: ${errorMessage(error)}`);
   }
   return data as T;
+}
+
+export type Features = S["Features"];
+export type Preferences = S["Preferences"];
+export type ReelFeed = S["ReelFeed"];
+export type Reel = ReelFeed["items"][number];
+export type ReelAnswerResult = S["ReelAnswerResult"];
+
+/** Error carrying the HTTP status, so screens can react to 403 / 409 specifically. */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
 }

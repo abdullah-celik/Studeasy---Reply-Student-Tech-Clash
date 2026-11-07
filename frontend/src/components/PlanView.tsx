@@ -1,10 +1,11 @@
 import type { StudyPlan } from "../api/client";
+import { PixelIcon, type IconName } from "./PixelIcon";
 
-const KIND_LABEL: Record<string, string> = {
-  review_flashcards: "🃏 Flashcards",
-  quiz: "❓ Quiz",
-  study: "📖 Study",
-  rest: "☕ Rest",
+const KIND: Record<string, { icon: IconName; label: string }> = {
+  review_flashcards: { icon: "cards", label: "Flashcards" },
+  quiz: { icon: "quiz", label: "Quiz" },
+  study: { icon: "book", label: "Study" },
+  rest: { icon: "heart", label: "Rest" },
 };
 
 export function PlanView({ plan }: { plan: StudyPlan }) {
@@ -17,7 +18,7 @@ export function PlanView({ plan }: { plan: StudyPlan }) {
           <ul>
             {d.tasks.map((t, i) => (
               <li key={i}>
-                {KIND_LABEL[t.kind] ?? t.kind} · {t.minutes} min{t.concept ? ` · ${t.concept}` : ""}
+                <PixelIcon name={KIND[t.kind]?.icon ?? "star"} size={12} /> {KIND[t.kind]?.label ?? t.kind} · {t.minutes} min{t.concept ? ` · ${t.concept}` : ""}
                 <div className="muted small">{t.note}</div>
               </li>
             ))}
