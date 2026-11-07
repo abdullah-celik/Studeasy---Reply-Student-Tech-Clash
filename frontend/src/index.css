@@ -647,6 +647,50 @@ dialog.legal::backdrop { background: rgb(20 16 30 / 0.35); }
 .legal-body a { color: var(--lavender-deep); }
 .legal-foot { display: flex; justify-content: flex-end; padding: 10px 20px 16px; border-top: 2px dashed var(--soft-line); }
 
+/* Intro splash: the GIF's own transparent gap reveals the app ------------------- */
+.splash {
+  position: fixed; inset: 0; z-index: 1000; cursor: pointer; overflow: hidden;
+  background: #122260; /* the GIF's backdrop, until it has loaded */
+  transition: opacity 300ms var(--ease);
+  /* size of one GIF pixel on screen (the GIF is 160x90) */
+  --s: min(calc(100vw / 160), calc(100dvh / 90));
+}
+.splash.loaded { background: transparent; }
+.splash.leaving { opacity: 0; pointer-events: none; }
+.splash img {
+  position: relative; width: 100%; height: 100%; display: block;
+  object-fit: cover; image-rendering: pixelated; image-rendering: crisp-edges;
+}
+.curtain { display: none; }
+
+/* Portrait: show the whole scene, and split the bands above/below it in sync with the GIF
+   (its curtains start opening at 0.85 s and reach the edges at 1.8 s). */
+@media (max-aspect-ratio: 1/1) {
+  .splash img { object-fit: contain; }
+  .curtain {
+    display: block; position: absolute; width: 50%; height: calc(50% - var(--s) * 45 + 1px);
+    background-color: #122260;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' shape-rendering='crispEdges'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23203e9b'/%3E%3C/svg%3E");
+    background-size: calc(var(--s) * 10) calc(var(--s) * 8);
+    image-rendering: pixelated;
+  }
+  .curtain.top { top: 0; } .curtain.bottom { bottom: 0; }
+  .curtain.left { left: 0; } .curtain.right { right: 0; }
+  /* the GIF's edge: black, blue, cyan, white, black (one GIF pixel each), shown once it opens */
+  .curtain::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: calc(var(--s) * 5); opacity: 0;
+    background: linear-gradient(90deg, #000 20%, #2d78eb 20% 40%, #73dcff 40% 60%, #fff 60% 80%, #000 80%);
+  }
+  .curtain.left::after { right: 0; }
+  .curtain.right::after { left: 0; transform: scaleX(-1); }
+  .splash.loaded .curtain { animation: curtain-open 950ms cubic-bezier(0.4, 0, 0.6, 1) 850ms forwards; }
+  .splash.loaded .curtain.left { --to: -100%; }
+  .splash.loaded .curtain.right { --to: 100%; }
+  .splash.loaded .curtain::after { animation: seam 1ms linear 850ms forwards; }
+}
+@keyframes curtain-open { to { transform: translateX(var(--to)); } }
+@keyframes seam { to { opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
