@@ -1,0 +1,19 @@
+# Pings the Render free instance so it doesn't spin down (15 min idle -> ~1 min cold start).
+# Set the repo variable BACKEND_URL (Settings > Secrets and variables > Actions > Variables),
+# e.g. https://studeasy-api.onrender.com. Scheduled runs only happen on the default branch,
+# can be delayed by GitHub, and pause after 60 days without repo activity.
+name: Keep backend warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    if: ${{ vars.BACKEND_URL != '' }}
+    timeout-minutes: 3
+    steps:
+      - name: Ping /api/health
+        run: curl -fsS --max-time 90 --retry 2 --retry-delay 5 "${{ vars.BACKEND_URL }}/api/health"

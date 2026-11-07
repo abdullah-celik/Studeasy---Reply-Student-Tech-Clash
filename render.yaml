@@ -1,0 +1,29 @@
+# Render Blueprint: New + > Blueprint > connect this repo > Apply.
+# Values marked sync: false are entered in the Render dashboard on first apply.
+services:
+  - type: web
+    name: studeasy-api
+    runtime: docker
+    plan: free
+    region: frankfurt # next to the Supabase project (eu-central-1)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        value: https://vglxdxdrtyicmgcmubqm.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # JSON list: your Cloudflare Pages URL + local dev
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: ENABLE_REELS
+        value: "true"

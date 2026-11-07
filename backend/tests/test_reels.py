@@ -73,3 +73,11 @@ def test_feed_schema_hides_quiz_answer():
     dumped = feed.model_dump()
     assert "answer" not in dumped["items"][0]["content"]
     assert dumped["items"][1]["type"] == "break"
+
+
+def test_normalise_rows_gives_every_row_the_same_keys():
+    from app.services.reels import normalise_rows
+
+    rows = normalise_rows([{"type": "explainer"}, {"type": "flashcard", "flashcard_id": "x"}])
+    assert all(r["source_chunk_ids"] == [] for r in rows)
+    assert rows[0]["flashcard_id"] is None and rows[1]["flashcard_id"] == "x"

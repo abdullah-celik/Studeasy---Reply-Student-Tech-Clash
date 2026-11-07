@@ -26,7 +26,10 @@ def structured(schema: type[BaseModel]):
     function_calling is used instead of strict json_schema because strict mode
     rejects optional fields / defaults, which our schemas use.
     """
-    return chat_model().with_structured_output(schema, method="function_calling")
+    # One retry: if the model returns something that fails validation, ask again.
+    return chat_model().with_structured_output(schema, method="function_calling").with_retry(
+        stop_after_attempt=2
+    )
 
 
 @lru_cache

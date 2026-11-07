@@ -1,7 +1,10 @@
 """Quiz master agent: writes questions and flashcards, grades open answers."""
 
-from pydantic import BaseModel, Field
+from typing import Annotated, Any
 
+from pydantic import BaseModel, BeforeValidator, Field
+
+from app.agents.lenient import LIntList, LStr, LStrList
 from app.llm import structured
 from app.schemas import QuestionType
 
@@ -25,14 +28,26 @@ Compare it with the model answer and the source material. Give a score from 0 to
 says what was right and what was missing. Ignore spelling mistakes."""
 
 
+def _to_question_type(v: Any) -> Any:
+    if not isinstance(v, str):
+        return v
+    key = v.strip().lower().replace("-", " ").replace("_", " ").replace("/", " ")
+    aliases = {
+        "multiple choice": "multiple_choice", "mcq": "multiple_choice", "mc": "multiple_choice",
+        "true false": "true_false", "truefalse": "true_false", "tf": "true_false",
+        "boolean": "true_false", "open": "open", "open ended": "open", "short answer": "open",
+    }
+    return aliases.get(key, v)
+
+
 class GeneratedQuestion(BaseModel):
-    type: QuestionType
-    prompt: str
-    options: list[str] = Field(default_factory=list)
-    answer: str
-    explanation: str
-    concept: str
-    source_indices: list[int] = Field(default_factory=list)
+    type: Annotated[QuestionType, BeforeValidator(_to_question_type)]
+    prompt: LStr
+    options: LStrList = Field(default_factory=list)
+    answer: LStr
+    explanation: LStr = ""
+    concept: LStr
+    source_indices: LIntList = Field(default_factory=list)
 
 
 class GeneratedQuiz(BaseModel):
@@ -40,9 +55,9 @@ class GeneratedQuiz(BaseModel):
 
 
 class GeneratedFlashcard(BaseModel):
-    front: str
-    back: str
-    concept: str
+    front: LStr
+    back: LStr
+    concept: LStr
 
 
 class GeneratedDeck(BaseModel):
