@@ -125,3 +125,15 @@ def test_rate_limit_detection():
     err = httpx.HTTPStatusError("busy", request=req, response=httpx.Response(429, request=req))
     assert llm.is_rate_limited(err)
     assert not llm.is_rate_limited(ValueError("x"))
+
+
+def test_cloudflare_settings_accept_common_misspellings(monkeypatch):
+    for k, v in BASE.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.delenv("CLOUDFLARE_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "cloudflare")
+    monkeypatch.setenv("CLAUDFLARE_ACCOUNT_ID", "acct")
+    monkeypatch.setenv("CLAUDFLARE_API_TOKEN", "tok")
+    s = Settings(_env_file=None)
+    assert (s.cloudflare_account_id, s.cloudflare_api_token) == ("acct", "tok")

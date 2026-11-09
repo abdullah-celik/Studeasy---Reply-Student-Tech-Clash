@@ -19,8 +19,24 @@ class Settings(BaseSettings):
     llm_provider: Literal["cloudflare", "mistral", "openai"] = "cloudflare"
 
     # Cloudflare Workers AI (dash.cloudflare.com -> AI -> Workers AI -> Use REST API)
-    cloudflare_account_id: str | None = None
-    cloudflare_api_token: str | None = None
+    # Also accepts a few common spellings, so a typo in the dashboard doesn't take the app down.
+    cloudflare_account_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "CLOUDFLARE_ACCOUNT_ID", "CLAUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT", "CF_ACCOUNT_ID"
+        ),
+    )
+    cloudflare_api_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "CLOUDFLARE_API_TOKEN",
+            "CLAUDFLARE_API_TOKEN",
+            "CLOUDFLARE_API_KEY",
+            "CLAUDFLARE_API_KEY",
+            "CLOUDFLARE_TOKEN",
+            "CF_API_TOKEN",
+        ),
+    )
     cloudflare_chat_model: str = "@cf/meta/llama-4-scout-17b-16e-instruct"
     cloudflare_embedding_model: str = "@cf/baai/bge-m3"  # 1024 dimensions
     cloudflare_temperature: float = 0.3
