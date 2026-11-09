@@ -1,19 +1,38 @@
-# Pings the Render free instance so it doesn't spin down (15 min idle -> ~1 min cold start).
-# Set the repo variable BACKEND_URL (Settings > Secrets and variables > Actions > Variables),
-# e.g. https://studeasy-api.onrender.com. Scheduled runs only happen on the default branch,
-# can be delayed by GitHub, and pause after 60 days without repo activity.
+# Keeps the free showcase awake:
+# - Render's free instance sleeps after 15 min idle (~1 min cold start), so ping every 10 min.
+# - /api/health also reads the database, so the free Supabase project isn't paused for inactivity.
+# - GitHub turns off scheduled workflows in public repos after 60 days without activity;
+#   the weekly job re-enables this workflow through the API, which resets that timer.
+# BACKEND_URL (repo variable) is optional; it defaults to the live Render URL.
 name: Keep backend warm
 
 on:
   schedule:
     - cron: "*/10 * * * *"
+    - cron: "23 4 * * 1"
   workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+env:
+  BACKEND_URL: ${{ vars.BACKEND_URL || 'https://studeasy-api.onrender.com' }}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    if: ${{ vars.BACKEND_URL != '' }}
     timeout-minutes: 3
     steps:
       - name: Ping /api/health
-        run: curl -fsS --max-time 90 --retry 2 --retry-delay 5 "${{ vars.BACKEND_URL }}/api/health"
+        run: curl -fsS --max-time 90 --retry 2 --retry-delay 5 "$BACKEND_URL/api/health"
+
+  stay-enabled:
+    if: github.event.schedule == '23 4 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Re-enable this workflow (resets GitHub's 60-day inactivity timer)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-warm.yml/enable"

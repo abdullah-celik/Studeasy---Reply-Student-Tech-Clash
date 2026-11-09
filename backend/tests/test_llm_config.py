@@ -1,25 +1,100 @@
+import pytest
 from langchain_core.messages import HumanMessage
+from pydantic import ValidationError
 
+from app import llm
 from app.agents.orchestrator import Route
-from app.config import get_settings
-from app.llm import _model, chat_model
+from app.config import Settings, get_settings
+
+BASE = {"SUPABASE_URL": "https://x.supabase.co", "SUPABASE_SERVICE_ROLE_KEY": "sb_secret_x"}
 
 
-def test_defaults_target_gpt_6_luna_without_temperature():
-    s = get_settings()
-    assert s.openai_chat_model == "gpt-6-luna"
-    assert s.openai_temperature is None
+@pytest.fixture
+def provider(monkeypatch):
+    """Rebuild settings and cached models for the given provider."""
+
+    def use(name: str, **env: str):
+        for k, v in {**BASE, "LLM_PROVIDER": name, **env}.items():
+            monkeypatch.setenv(k, v)
+        get_settings.cache_clear()
+        llm._model.cache_clear()
+        llm._mistral_chat.cache_clear()
+        llm.embeddings.cache_clear()
+        llm._throttle.cache_clear()
+        return get_settings()
+
+    yield use
+    get_settings.cache_clear()
+    llm._model.cache_clear()
+    llm._mistral_chat.cache_clear()
+    llm.embeddings.cache_clear()
+    llm._throttle.cache_clear()
 
 
-def test_tutor_request_uses_reasoning_effort():
-    p = chat_model()._get_request_payload([HumanMessage("hi")])
+def test_mistral_is_the_default_and_uses_1024_vectors(provider, monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("MISTRAL_API_KEY", "m-test")
+    for k, v in BASE.items():
+        monkeypatch.setenv(k, v)
+    s = Settings(_env_file=None)
+    assert s.llm_provider == "mistral"
+    assert s.vector_size == 1024
+
+
+def test_missing_provider_key_fails_clearly(monkeypatch):
+    for k, v in BASE.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setenv("LLM_PROVIDER", "mistral")
+    monkeypatch.setenv("MISTRAL_API_KEY", "")
+    with pytest.raises(ValidationError, match="MISTRAL_API_KEY"):
+        Settings(_env_file=None)
+
+
+def test_mistral_models_share_one_throttle(provider):
+    provider("mistral", MISTRAL_API_KEY="m-test")
+    chat = llm.chat_model()
+    assert chat.model == "mistral-small-latest"
+    assert chat.rate_limiter is llm._throttle()
+    emb = llm.embeddings()
+    assert emb.model == "mistral-embed"
+
+
+@pytest.mark.asyncio
+async def test_mistral_embeddings_send_batches_one_by_one(provider, monkeypatch):
+    provider("mistral", MISTRAL_API_KEY="m-test", MISTRAL_REQUESTS_PER_SECOND="1000")
+    emb = llm.embeddings()
+    calls: list[int] = []
+
+    async def fake_parent(self, texts):
+        calls.append(len(texts))
+        return [[0.0] * 1024 for _ in texts]
+
+    from langchain_mistralai import MistralAIEmbeddings
+
+    monkeypatch.setattr(MistralAIEmbeddings, "aembed_documents", fake_parent)
+    texts = ["x" * 6000] * 5  # 30k characters -> several batches of at most 16k
+    out = await emb.aembed_documents(texts)
+    assert len(out) == 5
+    assert len(calls) > 1 and sum(calls) == 5
+
+
+def test_openai_still_works_when_selected(provider):
+    s = provider("openai", OPENAI_API_KEY="sk-test")
+    assert s.vector_size == 1536
+    p = llm.chat_model()._get_request_payload([HumanMessage("hi")])
     assert p["model"] == "gpt-6-luna"
     assert p["reasoning_effort"] == "low"
     assert "temperature" not in p
-
-
-def test_structured_request_sends_effort_none():
-    bound = _model("none").bind_tools([Route], tool_choice="Route")
+    bound = llm._model("none").bind_tools([Route], tool_choice="Route")
     p = bound.bound._get_request_payload([HumanMessage("hi")], **bound.kwargs)
     effort = p.get("reasoning", {}).get("effort") or p.get("reasoning_effort")
     assert effort == "none"
+
+
+def test_rate_limit_detection():
+    import httpx
+
+    req = httpx.Request("POST", "https://api.mistral.ai/v1/chat/completions")
+    err = httpx.HTTPStatusError("busy", request=req, response=httpx.Response(429, request=req))
+    assert llm.is_rate_limited(err)
+    assert not llm.is_rate_limited(ValueError("x"))

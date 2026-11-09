@@ -15,6 +15,7 @@ from app.agents.graph import build_graph
 from app.config import get_settings
 from app.db import get_db
 from app.deps import CurrentUser, get_current_user, get_owned_course
+from app.llm import is_rate_limited
 from app.schemas import ChatMessage, ChatRequest, ChatThread, ChatThreadCreate, ChatThreadUpdate
 from app.services import chat_history, planning
 from supabase import AsyncClient
@@ -99,9 +100,14 @@ async def chat(
             if reply:
                 await chat_history.save(db, user.id, course_id, "assistant", reply, chat_id)
             yield _event("done", {})
-        except Exception:
+        except Exception as exc:
             log.exception("Chat run failed")
-            yield _event("error", {"message": "Something went wrong. Please try again."})
+            message = (
+                "The free AI plan is busy right now. Please wait a few seconds and try again."
+                if is_rate_limited(exc)
+                else "Something went wrong. Please try again."
+            )
+            yield _event("error", {"message": message})
 
     return EventSourceResponse(events())
 

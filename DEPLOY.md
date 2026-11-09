@@ -5,7 +5,7 @@
 | Backend (FastAPI) | Render free web service, Frankfurt | 512 MB / 0.1 CPU; sleeps after 15 min idle (~1 min wake-up), kept warm by a GitHub Action |
 | Frontend (React/Vite) | Cloudflare Pages | none relevant for a static site |
 | Database + Auth | Supabase free (`stueasy` project) | pauses after a week without activity |
-| AI | OpenAI | **not free**, pay per use |
+| AI | Mistral (Experiment plan) | free: about 1 request per second; requests may be used for training |
 
 Order matters: backend first (the frontend needs its URL), then frontend, then wire the
 two together with CORS and Supabase Auth URLs.
@@ -15,7 +15,7 @@ two together with CORS and Supabase Auth URLs.
 1. render.com > sign in with GitHub > **New + > Blueprint** > pick this repo > **Apply**.
    `render.yaml` creates `studeasy-api` (Docker, free plan, Frankfurt).
 2. Fill in the prompted secrets:
-   - `OPENAI_API_KEY`
+   - `MISTRAL_API_KEY` (console.mistral.ai → API Keys; `LLM_PROVIDER=mistral` is the default)
    - `SUPABASE_SERVICE_ROLE_KEY` (secret key from Supabase > Project Settings > API Keys)
    - `CORS_ORIGINS`: `["http://localhost:5173"]` for now; updated in step 3.
 3. Wait for the deploy, then open `https://<service>.onrender.com/api/health`. It should return

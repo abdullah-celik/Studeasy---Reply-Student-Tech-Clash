@@ -22,8 +22,8 @@ concepts, and the quiz master reuses the same concept names.
 | Area | Choice | Notes |
 |---|---|---|
 | Language / framework | Python + FastAPI | Best AI ecosystem; OpenAPI spec → generated TypeScript types for the frontend |
-| LLM | OpenAI GPT-6 Luna (`OPENAI_CHAT_MODEL`, default `gpt-6-luna`), text + image input | Tutor uses `OPENAI_REASONING_EFFORT` (low); structured calls use `OPENAI_STRUCTURED_REASONING_EFFORT` (none) via the Responses API |
-| Embeddings | `text-embedding-3-small`, 1536 dims | Dimension is hard-coded in `supabase/schema.sql` too |
+| LLM | Mistral Small (`MISTRAL_CHAT_MODEL`, default `mistral-small-latest`) on the free Experiment plan; or OpenAI GPT-6 Luna with `LLM_PROVIDER=openai` | All Mistral calls share one throttle (`MISTRAL_REQUESTS_PER_SECOND`, 0.9) because the free plan allows about 1 request/second |
+| Embeddings | `mistral-embed`, 1024 dims (OpenAI: `text-embedding-3-small`, 1536) | The size is hard-coded in `supabase/schema.sql`; after a provider switch the backend re-embeds existing chunks on startup |
 | Agent orchestration | LangGraph | One explicit graph (`app/agents/graph.py`), easy to demo and debug |
 | Database / vectors | Supabase Postgres + pgvector | HNSW cosine index, `match_chunks` SQL function |
 | Auth | Supabase Auth | Frontend logs in with supabase-js, sends `Authorization: Bearer <access_token>` |
@@ -68,7 +68,7 @@ app/
   main.py            FastAPI app, CORS, routers
   config.py          settings from env
   deps.py            auth (Supabase JWT) + course ownership check
-  llm.py             OpenAI chat / structured output / embeddings
+  llm.py             Mistral or OpenAI chat / structured output / embeddings
   schemas.py         API contract (→ OpenAPI → TypeScript)
   agents/
     graph.py         LangGraph: orchestrator → tutor/verifier | quiz master | planner
@@ -133,7 +133,7 @@ Interactive docs: http://localhost:8000/docs
 
 1. Create a Supabase project, open the SQL editor and run `supabase/schema.sql`.
    The script is idempotent: after pulling new features (like reels), just run it again.
-2. `cp .env.example .env` and fill in the OpenAI key, Supabase URL and **service role** key.
+2. `cp .env.example .env` and fill in the Mistral key, Supabase URL and **service role** key.
 3. Install and run:
 
 ```bash

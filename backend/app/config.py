@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,8 +10,19 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # Which AI provider to use: "mistral" (free Experiment plan) or "openai" (paid).
+    # The embedding size differs (1024 vs 1536) and must match vector(N) in schema.sql.
+    llm_provider: Literal["mistral", "openai"] = "mistral"
+
+    # Mistral (console.mistral.ai). The free plan allows about 1 request per second per key.
+    mistral_api_key: str | None = None
+    mistral_chat_model: str = "mistral-small-latest"
+    mistral_embedding_model: str = "mistral-embed"  # 1024 dimensions
+    mistral_temperature: float = 0.3
+    mistral_requests_per_second: float = 0.9
+
     # OpenAI
-    openai_api_key: str
+    openai_api_key: str | None = None
     # GPT-6 Luna: OpenAI's budget model, text + image input (developers.openai.com/api/docs/models/gpt-6-luna)
     openai_chat_model: str = "gpt-6-luna"
     # Only sent when set; reasoning models may reject it.
@@ -22,7 +34,8 @@ class Settings(BaseSettings):
     # "none" keeps them fast and cheap. Empty = don't send.
     openai_structured_reasoning_effort: str | None = "none"
     openai_embedding_model: str = "text-embedding-3-small"
-    embedding_dimensions: int = 1536
+    # Empty = the provider's size (Mistral 1024, OpenAI 1536).
+    embedding_dimensions: int | None = None
 
     # Supabase
     supabase_url: str
@@ -51,14 +64,33 @@ class Settings(BaseSettings):
     reels_break_every: int = 15  # insert a "take a break" card after this many reels
     reels_session_minutes: int = 30  # views within this window count as one session
 
-
     @field_validator(
-        "openai_temperature", "openai_reasoning_effort", "openai_structured_reasoning_effort",
+        "openai_temperature",
+        "openai_reasoning_effort",
+        "openai_structured_reasoning_effort",
+        "openai_api_key",
+        "mistral_api_key",
+        "embedding_dimensions",
         mode="before",
     )
     @classmethod
     def _empty_is_none(cls, v):
         return None if isinstance(v, str) and not v.strip() else v
+
+    @model_validator(mode="after")
+    def _provider_key_present(self):
+        key = self.mistral_api_key if self.llm_provider == "mistral" else self.openai_api_key
+        if not key:
+            raise ValueError(
+                f"LLM_PROVIDER is {self.llm_provider!r} but {self.llm_provider.upper()}_API_KEY is not set"
+            )
+        return self
+
+    @property
+    def vector_size(self) -> int:
+        if self.embedding_dimensions:
+            return self.embedding_dimensions
+        return 1024 if self.llm_provider == "mistral" else 1536
 
 
 @lru_cache

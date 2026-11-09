@@ -14,6 +14,7 @@ dependencies = [
     "langgraph>=0.2.60",
     "langchain-core>=0.3",
     "langchain-openai>=0.3",
+    "langchain-mistralai>=1.1",
     "langchain-text-splitters>=0.3",
     "pypdf>=5.0",
     "python-pptx>=1.0",

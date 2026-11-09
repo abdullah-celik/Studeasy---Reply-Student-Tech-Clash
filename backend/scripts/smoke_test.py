@@ -1,4 +1,4 @@
-"""End-to-end smoke test against a running backend + real Supabase + real OpenAI.
+"""End-to-end smoke test against a running backend + real Supabase + the configured AI provider.
 
 Usage (from backend/, with .env filled in and the API running on :8000):
     python scripts/smoke_test.py                 # uses a built-in sample lecture

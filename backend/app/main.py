@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -8,17 +9,28 @@ from fastapi.routing import APIRoute
 from postgrest.exceptions import APIError
 
 from app.config import get_settings
-from app.db import init_supabase
+from app.db import get_db, init_supabase
 from app.errors import NoMaterialError
 from app.routers import chat, courses, flashcards, me, planning, quizzes, reels
+from app.services.reembed import backfill_embeddings
 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await init_supabase()
+    db = await init_supabase()
+    # Re-embed chunks left without a vector after an AI-provider switch (runs in the background).
+    task = asyncio.create_task(_backfill(db))
     yield
+    task.cancel()
+
+
+async def _backfill(db) -> None:
+    try:
+        await backfill_embeddings(db)
+    except Exception:
+        logging.getLogger("app.reembed").exception("Embedding backfill stopped")
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -59,7 +71,14 @@ async def database_error_handler(_: Request, exc: APIError):
 
 @app.get("/api/health", tags=["meta"])
 async def health():
-    return {"status": "ok"}
+    # A tiny database read on every health check (the keep-warm ping calls this every
+    # 10 minutes) also counts as activity, so the free Supabase project is not paused.
+    try:
+        await get_db().table("courses").select("id").limit(1).execute()
+        database = "ok"
+    except Exception:
+        database = "unreachable"
+    return {"status": "ok", "database": database}
 
 
 routers = [courses.router, chat.router, chat.threads, quizzes.router, flashcards.router, planning.router, me.router]

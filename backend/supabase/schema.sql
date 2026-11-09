@@ -28,7 +28,10 @@ create table if not exists documents (
     created_at  timestamptz not null default now()
 );
 
--- Text chunks + embeddings (dimension must match EMBEDDING_DIMENSIONS) -------
+-- Text chunks + embeddings ---------------------------------------------------
+-- The vector size must match the AI provider: 1024 for Mistral (mistral-embed),
+-- 1536 for OpenAI (text-embedding-3-small). To switch provider, replace every 1024 in this file.
+-- Embedding is nullable: after a switch the backend re-embeds rows that have none.
 create table if not exists chunks (
     id          uuid primary key default gen_random_uuid(),
     user_id     uuid not null references auth.users(id) on delete cascade,
@@ -36,9 +39,21 @@ create table if not exists chunks (
     document_id uuid not null references documents(id) on delete cascade,
     content     text not null,
     location    text not null,          -- e.g. "page 3", "slide 7", "section: Intro"
-    embedding   extensions.vector(1536) not null
+    embedding   extensions.vector(1024)
 );
 create index if not exists chunks_course_idx on chunks (course_id);
+
+-- Existing databases: resize the column if the provider changed. Keeps the chunk text,
+-- clears the old vectors (the backend fills them in again on startup).
+do $$
+begin
+    alter table chunks alter column embedding drop not null;
+    if (select atttypmod from pg_attribute
+        where attrelid = 'public.chunks'::regclass and attname = 'embedding') <> 1024 then
+        drop index if exists chunks_embedding_idx;
+        alter table chunks alter column embedding type extensions.vector(1024) using null;
+    end if;
+end $$;
 create index if not exists chunks_embedding_idx on chunks using hnsw (embedding extensions.vector_cosine_ops);
 
 -- Mastery map: one row per (student, course, concept) ----------------------
@@ -212,7 +227,7 @@ end $$;
 
 -- Vector search used by the retrieval service ------------------------------
 create or replace function match_chunks(
-    query_embedding extensions.vector(1536),
+    query_embedding extensions.vector(1024),
     p_course_id uuid,
     p_user_id uuid,
     match_count int default 6
@@ -234,6 +249,7 @@ as $$
     join documents d on d.id = c.document_id
     where c.course_id = p_course_id
       and c.user_id = p_user_id
+      and c.embedding is not null
     order by c.embedding <=> query_embedding
     limit match_count;
 $$;
