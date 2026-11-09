@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     # embeddings once, and report the result in /api/health. Extra models (a JSON list,
     # e.g. ["@cf/zai-org/glm-4.7-flash"]) are tried too, which helps when choosing a model.
     ai_self_test: bool = True
-    ai_self_test_extra_models: list[str] = ["@cf/zai-org/glm-4.7-flash"]
+    ai_self_test_extra_models: list[str] = []
 
     # OpenAI
     openai_api_key: str | None = None
