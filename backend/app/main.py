@@ -2,6 +2,8 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
+import openai
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,8 +13,10 @@ from postgrest.exceptions import APIError
 from app.config import get_settings
 from app.db import get_db, init_supabase
 from app.errors import NoMaterialError
+from app.llm import ai_error_message
 from app.routers import chat, courses, flashcards, me, planning, quizzes, reels
 from app.services.reembed import backfill_embeddings
+from app.services.selftest import STATUS, run_self_test
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,14 +24,16 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db = await init_supabase()
-    # Re-embed chunks left without a vector after an AI-provider switch (runs in the background).
-    task = asyncio.create_task(_backfill(db))
+    task = asyncio.create_task(_startup_jobs(db))  # in the background: startup stays fast
     yield
     task.cancel()
 
 
-async def _backfill(db) -> None:
+async def _startup_jobs(db) -> None:
+    if get_settings().ai_self_test:
+        await run_self_test()
     try:
+        # Re-embed chunks left without a vector after an AI-provider switch.
         await backfill_embeddings(db)
     except Exception:
         logging.getLogger("app.reembed").exception("Embedding backfill stopped")
@@ -61,12 +67,23 @@ async def no_material_handler(_: Request, exc: NoMaterialError):
     return JSONResponse(status_code=409, content={"detail": exc.message})
 
 
+@app.exception_handler(openai.APIError)
+@app.exception_handler(httpx.HTTPStatusError)
+async def ai_error_handler(_: Request, exc: Exception):
+    # AI-provider errors (daily allowance used up, busy, ...) as JSON inside the CORS middleware.
+    logging.getLogger("app.llm").error("AI provider error: %s", exc)
+    message = ai_error_message(exc) or "The AI service failed. Please try again."
+    return JSONResponse(status_code=503, content={"detail": message})
+
+
 @app.exception_handler(APIError)
 async def database_error_handler(_: Request, exc: APIError):
     # Handled here (inside the CORS middleware) so the browser sees a real error
     # instead of an opaque "Failed to fetch".
     logging.getLogger("app.db").error("Supabase error: %s", exc)
-    return JSONResponse(status_code=502, content={"detail": "Database request failed. Please try again."})
+    return JSONResponse(
+        status_code=502, content={"detail": "Database request failed. Please try again."}
+    )
 
 
 @app.get("/api/health", tags=["meta"])
@@ -78,10 +95,18 @@ async def health():
         database = "ok"
     except Exception:
         database = "unreachable"
-    return {"status": "ok", "database": database}
+    return {"status": "ok", "database": database, "ai": STATUS}
 
 
-routers = [courses.router, chat.router, chat.threads, quizzes.router, flashcards.router, planning.router, me.router]
+routers = [
+    courses.router,
+    chat.router,
+    chat.threads,
+    quizzes.router,
+    flashcards.router,
+    planning.router,
+    me.router,
+]
 if get_settings().enable_reels:  # optional module
     routers.append(reels.router)
 for r in routers:

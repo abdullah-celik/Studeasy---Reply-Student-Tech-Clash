@@ -66,8 +66,14 @@ def test_plan_dates_until_exam_and_capped():
 
 
 def _q(**kw):
-    base = dict(type="multiple_choice", prompt="p", options=["A", "B"], answer="b",
-                explanation="e", concept="c")
+    base = dict(
+        type="multiple_choice",
+        prompt="p",
+        options=["A", "B"],
+        answer="b",
+        explanation="e",
+        concept="c",
+    )
     return GeneratedQuestion(**{**base, **kw})
 
 
@@ -87,10 +93,13 @@ def test_summarize_quiz_uses_latest_answer_per_question():
         "topic": None,
         "created_at": "2026-01-01T00:00:00+00:00",
         "questions": [
-            {"id": "a", "answers": [
-                {"score": 0.0, "created_at": "2026-01-01T10:00:00+00:00"},
-                {"score": 1.0, "created_at": "2026-01-01T11:00:00+00:00"},
-            ]},
+            {
+                "id": "a",
+                "answers": [
+                    {"score": 0.0, "created_at": "2026-01-01T10:00:00+00:00"},
+                    {"score": 1.0, "created_at": "2026-01-01T11:00:00+00:00"},
+                ],
+            },
             {"id": "b", "answers": [{"score": 0.5, "created_at": "2026-01-01T10:00:00+00:00"}]},
             {"id": "c", "answers": []},
         ],

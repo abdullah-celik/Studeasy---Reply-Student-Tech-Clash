@@ -14,10 +14,12 @@ services:
       paths:
         - backend/**
     envVars:
-      # Free Mistral Experiment plan (console.mistral.ai)
+      # Cloudflare Workers AI: free daily allowance (dash.cloudflare.com -> AI -> Workers AI)
       - key: LLM_PROVIDER
-        value: mistral
-      - key: MISTRAL_API_KEY
+        value: cloudflare
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
         sync: false
       - key: SUPABASE_URL
         value: https://vglxdxdrtyicmgcmubqm.supabase.co
@@ -29,7 +31,5 @@ services:
       # Also allow Cloudflare Pages preview deployments (<hash>.<project>.pages.dev)
       - key: CORS_ORIGIN_REGEX
         value: https://([a-z0-9-]+\.)?studeasy\.pages\.dev
-      - key: MISTRAL_CHAT_MODEL
-        value: mistral-small-latest
       - key: ENABLE_REELS
         value: "true"

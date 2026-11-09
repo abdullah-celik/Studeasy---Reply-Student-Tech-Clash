@@ -1,8 +1,9 @@
-"""One place that builds the chat and embedding models, for Mistral or OpenAI.
+"""One place that builds the chat and embedding models.
 
-LLM_PROVIDER picks the provider. Mistral's free plan allows about one request per
-second per API key, so every Mistral call (chat, structured and embeddings) waits
-on one shared throttle instead of failing with HTTP 429.
+LLM_PROVIDER picks the provider:
+- cloudflare: Workers AI through its OpenAI-compatible endpoint (free daily allowance)
+- mistral: Mistral API; calls share one throttle to stay under the plan's request rate
+- openai: OpenAI (GPT-6 Luna)
 """
 
 from functools import lru_cache
@@ -17,12 +18,34 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 
 
+def cloudflare_base_url() -> str:
+    account = get_settings().cloudflare_account_id
+    return f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/v1"
+
+
 @lru_cache
 def _throttle() -> InMemoryRateLimiter:
     return InMemoryRateLimiter(
         requests_per_second=get_settings().mistral_requests_per_second,
         check_every_n_seconds=0.05,
         max_bucket_size=1,  # no bursts
+    )
+
+
+@lru_cache
+def _cloudflare_chat(model: str) -> BaseChatModel:
+    from langchain_openai import ChatOpenAI
+
+    s = get_settings()
+    return ChatOpenAI(
+        model=model,
+        api_key=s.cloudflare_api_token,
+        base_url=cloudflare_base_url(),
+        temperature=s.cloudflare_temperature,
+        streaming=True,
+        stream_usage=False,
+        use_responses_api=False,
+        max_retries=2,
     )
 
 
@@ -43,8 +66,11 @@ def _mistral_chat() -> BaseChatModel:
 @lru_cache
 def _model(reasoning_effort: str | None) -> BaseChatModel:
     s = get_settings()
+    # Reasoning effort is an OpenAI setting; the other providers use one instance.
+    if s.llm_provider == "cloudflare":
+        return _cloudflare_chat(s.cloudflare_chat_model)
     if s.llm_provider == "mistral":
-        return _mistral_chat()  # one instance; reasoning effort is an OpenAI setting
+        return _mistral_chat()
 
     from langchain_openai import ChatOpenAI
 
@@ -61,12 +87,17 @@ def _model(reasoning_effort: str | None) -> BaseChatModel:
     )
 
 
-def chat_model() -> BaseChatModel:
-    """Free-text answers (tutor). OpenAI: uses OPENAI_REASONING_EFFORT."""
+def chat_model(model: str | None = None) -> BaseChatModel:
+    """Free-text answers (tutor). OpenAI: uses OPENAI_REASONING_EFFORT.
+
+    `model` picks another Cloudflare model (used by the startup self-test).
+    """
+    if model and get_settings().llm_provider == "cloudflare":
+        return _cloudflare_chat(model)
     return _model(get_settings().openai_reasoning_effort)
 
 
-def structured(schema: type[BaseModel]):
+def structured(schema: type[BaseModel], model: str | None = None):
     """Chat model that returns a validated Pydantic object.
 
     function_calling is used instead of strict json_schema because strict mode
@@ -74,9 +105,12 @@ def structured(schema: type[BaseModel]):
     routes tool calls through the Responses API; effort comes from
     OPENAI_STRUCTURED_REASONING_EFFORT ("none" by default: fast and cheap).
     """
-    model = _model(get_settings().openai_structured_reasoning_effort)
-    # Retries: the model returned something that failed validation, or the API was busy (429).
-    return model.with_structured_output(schema, method="function_calling").with_retry(
+    if model and get_settings().llm_provider == "cloudflare":
+        base = _cloudflare_chat(model)
+    else:
+        base = _model(get_settings().openai_structured_reasoning_effort)
+    # Retries: the model returned something that failed validation, or the API was busy.
+    return base.with_structured_output(schema, method="function_calling").with_retry(
         stop_after_attempt=3
     )
 
@@ -110,12 +144,22 @@ def _mistral_embeddings() -> Embeddings:
 
 @lru_cache
 def embeddings() -> Embeddings:
-    s = get_settings()
-    if s.llm_provider == "mistral":
-        return _mistral_embeddings()
-
     from langchain_openai import OpenAIEmbeddings
 
+    s = get_settings()
+    if s.llm_provider == "cloudflare":
+        return OpenAIEmbeddings(
+            model=s.cloudflare_embedding_model,
+            api_key=s.cloudflare_api_token,
+            base_url=cloudflare_base_url(),
+            check_embedding_ctx_length=False,  # send text, not OpenAI token ids
+            chunk_size=50,  # texts per request
+            # The OpenAI client otherwise asks for base64.
+            model_kwargs={"encoding_format": "float"},
+            max_retries=2,
+        )
+    if s.llm_provider == "mistral":
+        return _mistral_embeddings()
     return OpenAIEmbeddings(
         model=s.openai_embedding_model,
         api_key=s.openai_api_key,
@@ -123,5 +167,24 @@ def embeddings() -> Embeddings:
     )
 
 
+def _status_code(exc: BaseException) -> int | None:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code
+    return getattr(exc, "status_code", None)
+
+
 def is_rate_limited(exc: BaseException) -> bool:
-    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
+    return _status_code(exc) == 429 or "neurons" in str(exc).lower()
+
+
+def ai_error_message(exc: BaseException) -> str | None:
+    """A student-friendly message for AI-provider limits, or None for other errors."""
+    text = str(exc).lower()
+    if "neurons" in text or "daily free allocation" in text:
+        return (
+            "Today's free AI allowance is used up. It resets every day at 00:00 UTC "
+            "(01:00 in Italy). Please come back then."
+        )
+    if is_rate_limited(exc):
+        return "The AI service is busy right now. Please wait a few seconds and try again."
+    return None

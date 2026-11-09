@@ -18,6 +18,7 @@ from app.agents import orchestrator, tutor, verifier
 from app.agents.state import ChatState
 from app.config import get_settings
 from app.errors import NoMaterialError
+from app.llm import ai_error_message
 from app.services import planning, quizzes, retrieval
 
 log = logging.getLogger(__name__)
@@ -69,9 +70,11 @@ async def quiz_node(state: ChatState, config: RunnableConfig) -> dict:
         return {"quiz": quiz}
     except NoMaterialError as e:
         return {"error": e.message}
-    except Exception:
+    except Exception as exc:
         log.exception("Quiz generation from chat failed")
-        return {"error": "I couldn't build a quiz this time. Please try again."}
+        return {
+            "error": ai_error_message(exc) or "I couldn't build a quiz this time. Please try again."
+        }
 
 
 async def planner_node(state: ChatState, config: RunnableConfig) -> dict:

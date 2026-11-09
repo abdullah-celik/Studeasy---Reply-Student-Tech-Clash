@@ -15,7 +15,7 @@ from app.agents.graph import build_graph
 from app.config import get_settings
 from app.db import get_db
 from app.deps import CurrentUser, get_current_user, get_owned_course
-from app.llm import is_rate_limited
+from app.llm import ai_error_message
 from app.schemas import ChatMessage, ChatRequest, ChatThread, ChatThreadCreate, ChatThreadUpdate
 from app.services import chat_history, planning
 from supabase import AsyncClient
@@ -68,7 +68,11 @@ async def chat(
                 if mode == "messages":
                     msg, meta = chunk
                     # Only the tutor's tokens are user-facing; other agents emit structured data.
-                    if meta.get("langgraph_node") == "tutor" and isinstance(msg.content, str) and msg.content:
+                    if (
+                        meta.get("langgraph_node") == "tutor"
+                        and isinstance(msg.content, str)
+                        and msg.content
+                    ):
                         answer_parts.append(msg.content)
                         yield _event("token", {"text": msg.content})
                     continue
@@ -77,7 +81,9 @@ async def chat(
                     if not update:
                         continue
                     if node == "orchestrator":
-                        yield _event("intent", {"intent": update["intent"], "topic": update.get("topic")})
+                        yield _event(
+                            "intent", {"intent": update["intent"], "topic": update.get("topic")}
+                        )
                     elif node == "retrieve":
                         yield _event("sources", {"sources": update["sources"]})
                     elif node == "verifier":
@@ -86,7 +92,9 @@ async def chat(
                         stored_reply = update["error"]
                         yield _event("error", {"message": update["error"]})
                     elif node == "quiz_master":
-                        stored_reply = f"[Generated a quiz with {len(update['quiz']['questions'])} questions]"
+                        stored_reply = (
+                            f"[Generated a quiz with {len(update['quiz']['questions'])} questions]"
+                        )
                         yield _event("quiz", update["quiz"])
                     elif node == "planner":
                         stored_reply = f"[Study plan] {update['plan']['summary']}"
@@ -102,11 +110,7 @@ async def chat(
             yield _event("done", {})
         except Exception as exc:
             log.exception("Chat run failed")
-            message = (
-                "The free AI plan is busy right now. Please wait a few seconds and try again."
-                if is_rate_limited(exc)
-                else "Something went wrong. Please try again."
-            )
+            message = ai_error_message(exc) or "Something went wrong. Please try again."
             yield _event("error", {"message": message})
 
     return EventSourceResponse(events())

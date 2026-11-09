@@ -6,11 +6,22 @@ def test_quiz_accepts_typical_llm_quirks():
     quiz = GeneratedQuiz.model_validate(
         {
             "questions": [
-                {"type": "True/False", "prompt": "Water is split in photolysis", "options": None,
-                 "answer": True, "explanation": "Yes", "concept": "Photolysis",
-                 "source_indices": ["[1]", 2]},
-                {"type": "multiple choice", "prompt": "Where?", "options": ["Stroma", "Nucleus"],
-                 "answer": "Stroma", "concept": "Calvin cycle"},
+                {
+                    "type": "True/False",
+                    "prompt": "Water is split in photolysis",
+                    "options": None,
+                    "answer": True,
+                    "explanation": "Yes",
+                    "concept": "Photolysis",
+                    "source_indices": ["[1]", 2],
+                },
+                {
+                    "type": "multiple choice",
+                    "prompt": "Where?",
+                    "options": ["Stroma", "Nucleus"],
+                    "answer": "Stroma",
+                    "concept": "Calvin cycle",
+                },
                 {"type": "open", "prompt": "Explain", "answer": 42, "concept": "ATP"},
             ]
         }

@@ -23,8 +23,9 @@ def test_pick_concepts_empty():
 
 
 def test_clean_quiz():
-    mcq = QuizGen(question="q", kind="multiple_choice", options=["A", "B"], answer="b",
-                  explanation="e")
+    mcq = QuizGen(
+        question="q", kind="multiple_choice", options=["A", "B"], answer="b", explanation="e"
+    )
     assert clean_quiz(mcq)["answer"] == "B"
     bad = mcq.model_copy(update={"answer": "Z"})
     assert clean_quiz(bad) is None
@@ -61,12 +62,24 @@ def test_feed_schema_hides_quiz_answer():
                     "type": "quiz",
                     "id": "00000000-0000-0000-0000-000000000001",
                     "concept": "c",
-                    "content": {"question": "q", "kind": "true_false",
-                                "options": ["true", "false"], "answer": "true",
-                                "explanation": "e"},
+                    "content": {
+                        "question": "q",
+                        "kind": "true_false",
+                        "options": ["true", "false"],
+                        "answer": "true",
+                        "explanation": "e",
+                    },
                 },
-                {"type": "break", "content": {"title": "t", "message": "m", "reels_watched": 15,
-                                              "minutes": 9, "concepts": []}},
+                {
+                    "type": "break",
+                    "content": {
+                        "title": "t",
+                        "message": "m",
+                        "reels_watched": 15,
+                        "minutes": 9,
+                        "concepts": [],
+                    },
+                },
             ],
         }
     )

@@ -75,7 +75,7 @@ function Privacy() {
       <h3>Who processes it</h3>
       <ul>
         <li><strong>Supabase</strong> (database and sign-in, EU region, Frankfurt).</li>
-        <li><strong>Mistral AI</strong> (AI models, France): your questions and the relevant parts of your material are sent to its API to generate answers, quizzes, cards and plans, and to build search vectors. Studeasy runs on Mistral's free plan, under which <strong>Mistral may use these requests to improve its models</strong>, so don't upload anything confidential.</li>
+        <li><strong>Cloudflare Workers AI</strong> (AI models): your questions and the relevant parts of your material are sent to it to generate answers, quizzes, cards and plans, and to build search vectors. Cloudflare does not use them to train models.</li>
         <li><strong>Render</strong> (runs the backend, Frankfurt) and <strong>Cloudflare Pages</strong> (serves the website).</li>
         <li><strong>Google Fonts</strong>: your browser loads the pixel fonts from Google, which sees your IP address.</li>
       </ul>

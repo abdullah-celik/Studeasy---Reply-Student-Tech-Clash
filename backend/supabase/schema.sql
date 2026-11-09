@@ -29,7 +29,7 @@ create table if not exists documents (
 );
 
 -- Text chunks + embeddings ---------------------------------------------------
--- The vector size must match the AI provider: 1024 for Mistral (mistral-embed),
+-- The vector size must match the AI provider: 1024 for Cloudflare (bge-m3) and Mistral,
 -- 1536 for OpenAI (text-embedding-3-small). To switch provider, replace every 1024 in this file.
 -- Embedding is nullable: after a switch the backend re-embeds rows that have none.
 create table if not exists chunks (

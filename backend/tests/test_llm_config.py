@@ -19,6 +19,7 @@ def provider(monkeypatch):
         get_settings.cache_clear()
         llm._model.cache_clear()
         llm._mistral_chat.cache_clear()
+        llm._cloudflare_chat.cache_clear()
         llm.embeddings.cache_clear()
         llm._throttle.cache_clear()
         return get_settings()
@@ -27,27 +28,53 @@ def provider(monkeypatch):
     get_settings.cache_clear()
     llm._model.cache_clear()
     llm._mistral_chat.cache_clear()
+    llm._cloudflare_chat.cache_clear()
     llm.embeddings.cache_clear()
     llm._throttle.cache_clear()
 
 
-def test_mistral_is_the_default_and_uses_1024_vectors(provider, monkeypatch):
+def test_cloudflare_is_the_default_and_uses_1024_vectors(monkeypatch):
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
-    monkeypatch.setenv("MISTRAL_API_KEY", "m-test")
     for k, v in BASE.items():
         monkeypatch.setenv(k, v)
     s = Settings(_env_file=None)
-    assert s.llm_provider == "mistral"
+    assert s.llm_provider == "cloudflare"
     assert s.vector_size == 1024
+    assert s.chat_model_name.startswith("@cf/")
 
 
-def test_missing_provider_key_fails_clearly(monkeypatch):
-    for k, v in BASE.items():
+@pytest.mark.parametrize(
+    ("name", "env", "missing"),
+    [
+        ("cloudflare", {"CLOUDFLARE_API_TOKEN": ""}, "CLOUDFLARE_API_TOKEN"),
+        ("mistral", {"MISTRAL_API_KEY": ""}, "MISTRAL_API_KEY"),
+        ("openai", {"OPENAI_API_KEY": ""}, "OPENAI_API_KEY"),
+    ],
+)
+def test_missing_provider_key_fails_clearly(monkeypatch, name, env, missing):
+    for k, v in {**BASE, "LLM_PROVIDER": name, **env}.items():
         monkeypatch.setenv(k, v)
-    monkeypatch.setenv("LLM_PROVIDER", "mistral")
-    monkeypatch.setenv("MISTRAL_API_KEY", "")
-    with pytest.raises(ValidationError, match="MISTRAL_API_KEY"):
+    with pytest.raises(ValidationError, match=missing):
         Settings(_env_file=None)
+
+
+def test_cloudflare_uses_its_openai_compatible_endpoint(provider):
+    provider("cloudflare", CLOUDFLARE_ACCOUNT_ID="acct123", CLOUDFLARE_API_TOKEN="cf-test")
+    chat = llm.chat_model()
+    assert chat.model_name == "@cf/meta/llama-4-scout-17b-16e-instruct"
+    assert chat.openai_api_base == "https://api.cloudflare.com/client/v4/accounts/acct123/ai/v1"
+    p = chat._get_request_payload([HumanMessage("hi")])
+    assert "reasoning_effort" not in p and "stream_options" not in p
+    assert llm.chat_model("@cf/zai-org/glm-4.7-flash").model_name == "@cf/zai-org/glm-4.7-flash"
+    emb = llm.embeddings()
+    assert emb.model == "@cf/baai/bge-m3"
+    assert emb.check_embedding_ctx_length is False
+
+
+def test_friendly_message_when_daily_allowance_is_used_up():
+    err = RuntimeError("4006: you have used up your daily free allocation of 10,000 neurons")
+    assert "resets every day" in llm.ai_error_message(err)
+    assert llm.ai_error_message(ValueError("boom")) is None
 
 
 def test_mistral_models_share_one_throttle(provider):

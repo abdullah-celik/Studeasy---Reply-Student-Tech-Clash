@@ -51,7 +51,7 @@ flowchart LR
 | Frontend | React, TypeScript, Vite | Cloudflare Pages |
 | Backend and agents | Python, FastAPI, LangGraph | Render (Docker, Frankfurt) |
 | Data and sign-in | Supabase: Postgres, pgvector, Auth, Row Level Security | Supabase |
-| AI | Mistral Small (chat, tool calling) and mistral-embed on the free Experiment plan; OpenAI GPT-6 Luna also supported (`LLM_PROVIDER`) | Mistral API |
+| AI | Llama 4 Scout (chat, tool calling) and BGE-M3 embeddings on Cloudflare Workers AI's free daily allowance; Mistral and OpenAI GPT-6 Luna also supported (`LLM_PROVIDER`) | Cloudflare Workers AI |
 
 Hosting runs on free tiers; the only running cost is AI usage.
 
@@ -68,14 +68,14 @@ DEPLOY.md   Step-by-step hosting guide (Render, Cloudflare Pages, Supabase)
 ## Run it locally
 
 You need Python 3.11+ with [uv](https://docs.astral.sh/uv/) (or pip), Node.js 22, a Supabase
-project and a free Mistral API key (console.mistral.ai).
+project and a free Cloudflare Workers AI token (dash.cloudflare.com → AI → Workers AI).
 
 ```bash
 # 1. Database: run backend/supabase/schema.sql once in the Supabase SQL editor
 
 # 2. Backend (http://localhost:8000, API docs at /docs)
 cd backend
-cp .env.example .env        # add MISTRAL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (the secret key)
+cp .env.example .env        # add CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (the secret key)
 uv sync
 uv run uvicorn app.main:app --reload
 
